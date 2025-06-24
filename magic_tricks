@@ -48,11 +48,11 @@
     	speaker: ChatMessage.getSpeaker({token: actor}),
     	content: `<b>${name}</b> casts ${itemName}! ${description}`
 
+});
+
 // Apply custom Active effect or condition if appropriate
 // Get Condition Array in console --> CONFIG.statusEffects
 // token.actor.toggleStatusEffect("condition.or.array.code.here");
-
-});
 
 //Define target if using .atLocation(target) below
 // const target = Array.from(game.user.targets) [0]
