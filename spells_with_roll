@@ -1,0 +1,72 @@
+// ---------------------------------------------------
+// SPELL WITH ROLL
+// ---------------------------------------------------
+// Get name and description of spell
+  const itemName = item.name;
+  const description = item.system.description;
+  const wpCost = item.system.rank *2;
+
+// Make sure caster token is selected
+  if (canvas.tokens.controlled.length === 0) {
+  	ui.notifications.warn(`Please select your token before casting ${itemName}.`);
+  	return; 
+}
+
+// Make sure target token is selected
+if (game.user.targets.size === 0) {
+  	ui.notifications.warn(`Please choose the target of the spell before casting ${itemName}.`);
+ 	return; 
+}
+
+// Set actor and spell variables, find spell on character sheet
+  const myTokenActor = canvas.tokens.controlled[0].actor;
+  const spell = myTokenActor.items.find(item => item.name == `${itemName}`);
+  if(spell == null || spell == undefined){
+	ui.notifications.warn(`You do not know the spell ${itemName}!`);
+	return;
+	}
+
+// Check if character has available Willpower points
+  const wpValue = actor.system.willPoints.value;
+  if(wpValue < wpCost){
+	ui.notifications.warn("You do not have enough Willpower points!");
+	return;
+	}
+
+// Spell roll dialog box and success evaluation
+const rollresult = await game.dragonbane.rollItem(`${itemName}`)
+
+if(rollresult.postRollData.success) {
+
+// Create chat card with actor, spell name, and description
+  const name = myTokenActor?.name || "Unnamed Hero";
+	ChatMessage.create({
+    	user: game.user._id,
+    	speaker: ChatMessage.getSpeaker({token: actor}),
+    	content: `<b>${name}</b> casts ${itemName}! ${description}`
+});
+
+// Apply custom Active Effect or condition if appropriate
+// Get Condition Array in console --> CONFIG.statusEffects
+// token.actor.toggleStatusEffect("condition.or.array.code.here");
+
+//Define target if using .atLocation(target) below
+const target = Array.from(game.user.targets) [0]
+
+// Path to sound file
+new Sequence ()
+  	.sound("path/to/sound/soundeffect.mp3")
+  	.play()
+
+// Path to animation file (set location accordingly)
+new Sequence ()
+  	.effect ()
+  	.file ("jb2a.sequencer_database_path")
+  	.atLocation(target)
+//	.atLocation(token)
+
+.play()
+
+} else {
+return;
+}
