@@ -12,7 +12,7 @@ Both macros will check for caster and target selection, if the caster has enough
 
 You will need to update the sound and animation paths accordingly and enable/disable the  token.actor.toggleStatusEffect section. You should really need the StatusEffect unless you are writing custom effects with something like Condition Lab for spells like Longstrider or Birdsong.
 
-The chat cards with spell description is definitely not necessary, and they will only trigger for non-damage spells. Might be nice just for Magic Tricks so there is someting in the chat...
+The chat cards with spell description is definitely not necessary, and they will only trigger for non-damage spells. Might be nice just for Magic Tricks so there is something in the chat...
 
 There are plenty of options when building out the Sequencer portions for sound and animations. I just included the basics. Watch .atLocation when setting up spells. Sequencer options can be found here: https://fantasycomputer.works/FoundryVTT-Sequencer/#/basics
 
