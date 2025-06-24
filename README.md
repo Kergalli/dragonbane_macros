@@ -10,7 +10,7 @@ These macros use the following add-ons:
 
 Both macros will check for caster and target selection, if the caster has enough WP, if the caster knows the spell or trick. For tricks it will prompt the dialog box and manage the WP spend. For spell rolls, it will follow the normal spellcasting path.
 
-You will need to update the sound and animation paths accordingly and enable/disable the  token.actor.toggleStatusEffect section. You should really need the StatusEffect unless you are writing custom effects with something like Condition Lab for spells like Longstrider or Birdsong.
+You will need to update the sound and animation paths accordingly and enable/disable the  token.actor.toggleStatusEffect section. You shouldn't really need the StatusEffect unless you are writing custom effects with something like Condition Lab for spells like Longstrider or Birdsong.
 
 The chat cards with spell description is definitely not necessary, and they will only trigger for non-damage spells. Might be nice just for Magic Tricks so there is something in the chat...
 
