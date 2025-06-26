@@ -9,8 +9,8 @@ const itemName     = item.name;
 const wpCost       = item.system.rank * 2;
 const description  = await TextEditor.enrichHTML(item.system.description, { async: true });
 const SOUND_PATH   = "sounds/Spells/Buff/spell-buff-long-4.mp3";
-const EFFECT_PATH  = item.getFlag("world", "effectPath") ?? "jb2a.condition.boon.01.009.green";
-const SCALE        = item.getFlag("world", "effectScale") ?? 0.4;
+const EFFECT_PATH  = "jb2a.condition.boon.01.009.green";
+const SCALE        = 0.4;
 
 // --- Token, Actor, Spell, and WP Checks ---
 const selected = canvas.tokens.controlled[0];
@@ -53,7 +53,7 @@ try {
 }
 
 // --- Check if the user canceled the roll ---
-if (!rollResult || typeof rollResult !== "object" || !rollResult.postRollData) {
+if (!rollResult?.postRollData) {
   ui.notifications.warn(`${itemName} casting was cancelled.`);
   return;
 }
