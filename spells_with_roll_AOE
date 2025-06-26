@@ -65,10 +65,18 @@ if (rollResult.postRollData.success) {
   const remainingWP = myTokenActor.system.willPoints.value;
   ui.notifications.info(`${name} has ${remainingWP} WP remaining.`);
 
+const chatContent = `
+  <b>${name}</b> casts <i>${itemName}</i>!<br><br>
+  <details>
+  <summary><strong>Show Spell Description</strong></summary>
+  ${description}
+  </details>
+`;
+
   ChatMessage.create({
     user: game.user.id,
     speaker: ChatMessage.getSpeaker({ token: selected }),
-    content: `<b>${name}</b> casts ${itemName}! ${description}`
+    content: chatContent
   });
 
 // -- Apply custom status - Condition Array in console --> CONFIG.statusEffects ---
