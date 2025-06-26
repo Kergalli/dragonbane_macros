@@ -1,17 +1,18 @@
 // SPELL WITH ROLL
-if (!item) {
-  ui.notifications.warn("This macro must be run from an item.");
+if (typeof item === "undefined") {
+  ui.notifications.warn("This macro must be run from within an ItemMacro.");
   return;
 }
 
 // --- Setup ---
 const itemName     = item.name;
 const wpCost       = item.system.rank * 2;
-const description  = await TextEditor.enrichHTML(item.system.description, { async: true });
 const SOUND_PATH   = "sounds/Spells/Buff/spell-buff-long-4.mp3";
-AudioHelper.preloadSound(SOUND_PATH);
+await AudioHelper.preloadSound(SOUND_PATH);
 const EFFECT_PATH  = "jb2a.condition.boon.01.009.green";
 const SCALE        = 0.4;
+const status_id	   = "7LOyAthpOt1TFBLq"
+const DEBUG_MODE   = false;
 
 // --- Token, Actor, Spell, and WP Checks ---
 const selected = canvas.tokens.controlled[0];
@@ -48,6 +49,7 @@ let rollResult;
 
 try {
   rollResult = await game.dragonbane.rollItem(itemName);
+  if (DEBUG_MODE) console.log(`[Spell Macro] ${itemName} - Roll Result:`, rollResult);
 } catch (error) {
   ui.notifications.warn(`${itemName} casting was cancelled.`);
   return;
@@ -64,6 +66,7 @@ if (rollResult.postRollData.success) {
   const remainingWP = myTokenActor.system.willPoints.value;
   ui.notifications.info(`${name} has ${remainingWP} WP remaining.`);
 
+  const description  = await TextEditor.enrichHTML(item.system.description, { async: true });
   const chatContent = `
     <b>${name}</b> casts <i>${itemName}</i>!<br><br>
     <details>
@@ -79,7 +82,7 @@ if (rollResult.postRollData.success) {
   });
 
   // -- Apply custom status - Condition Array in console --> CONFIG.statusEffects ---
-  selected.actor.toggleStatusEffect("7LOyAthpOt1TFBLq");
+  selected.actor.toggleStatusEffect(status_id);
 
   new Sequence()
     .sound(SOUND_PATH)
