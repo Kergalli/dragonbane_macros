@@ -9,6 +9,7 @@ const itemName     = item.name;
 const wpCost       = item.system.rank * 2;
 const description  = await TextEditor.enrichHTML(item.system.description, { async: true });
 const SOUND_PATH   = "sounds/Spells/Buff/spell-buff-long-4.mp3";
+AudioHelper.preloadSound(SOUND_PATH);
 const EFFECT_PATH  = "jb2a.condition.boon.01.009.green";
 const SCALE        = 0.4;
 
