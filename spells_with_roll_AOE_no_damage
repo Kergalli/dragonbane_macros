@@ -1,20 +1,21 @@
-// SPELL WITH ROLL AND AOE
+// SPELL WITH ROLL AND AOE NO DAMAGE
 (async () => {
 if (typeof item === "undefined") {
   ui.notifications.warn("This macro must be run from within an ItemMacro.");
   return;
 }
 
-// --- Setup ---
+// ⭐ Setup ⭐
 const itemName     = item.name;
 const wpCost       = item.system.rank * 2;
-const SOUND_PATH   = "sounds/Damage/Cold/ice-storm-1.mp3";
+const SOUND_PATH   = "sounds/Spells/Elemental/spell-plant-moving-3.mp3";
 await AudioHelper.preloadSound(SOUND_PATH);
-const EFFECT_PATH  = "jb2a.impact.frost.white.01";
-const SCALE        = 1.0;
+const EFFECT_PATH  = "https://assets.forge-vtt.com/655833db24905b2324eb7411/Dragonbane-Images/Fir01.webm";
+const SCALE        = 2.5;
+//const status_id	   = "prone" // Condition Array in console --> CONFIG.statusEffects
 const DEBUG_MODE   = false;
 
-// --- Token, Actor, Spell, and WP Checks ---
+// --- Token, Actor, Target, Spell, and WP Checks ---
 const selected = canvas.tokens.controlled[0];
 if (!selected) {
   ui.notifications.warn(`Please select your token before casting ${itemName}.`);
@@ -28,21 +29,20 @@ if (!spell) {
   return;
 }
 
+// ⭐ Untarget any previously selected tokens ⭐
+//game.user.updateTokenTargets([]);
+
+// ⭐ Confirm target selection (if needed) ⭐
+if (game.user.targets.size === 0) {
+   ui.notifications.warn(`Please choose the target of the spell before casting ${itemName}.`);
+   return; 
+}
+
 const wpValue = myTokenActor.system.willPoints.value;
 if (wpValue < wpCost) {
   ui.notifications.warn("Not enough Willpower points!");
   return;
 }
-
-// --- Untarget any previously selected tokens ---
-game.user.updateTokenTargets([]);
-
-// --- Target selection (comment out if not needed in Sequencer) ---
-// const target = Array.from(game.user.targets)[0];
-// if (game.user.targets.size === 0) {
-//   ui.notifications.warn(`Please choose the target of the spell before casting ${itemName}.`);
-//   return; 
-// }
 
 // --- Spell roll dialog box and success evaluation ---
 let rollResult;
@@ -81,19 +81,18 @@ const chatContent = `
     content: chatContent
   });
 
-// -- Apply custom status - Condition Array in console --> CONFIG.statusEffects ---
-//  selected.actor.toggleStatusEffect("7LOyAthpOt1TFBLq");
+// --- Apply custom status ---
+//  selected.actor.toggleStatusEffect(status_id);
 
-// --- Configuration of AOE ---
-const RANGE = 4; // in meters
-const EFFECT_LABEL = "Cold";
-const EFFECT_ICON = "icons/svg/frozen.svg";
+// ⭐ Configuration of AOE ⭐
+const EFFECT_LABEL = "Ensnared";
+const EFFECT_ICON = "modules/game-icons-net/whitetransparent/entangled-typhoon.svg";
 const EFFECT_DURATION_SECONDS = 900;
+const targetToken = Array.from(game.user.targets)[0];
 const originToken = canvas.tokens.controlled[0];
-const originActor = originToken.actor;
 
-// --- Calculate Range using grid squares instead of Euclidean distance ---
-const RANGE_SQUARES = 2; // 2 grid squares = 4 meters (if grid is 2m/square)
+// ⭐ Calculate Range using grid squares instead of Euclidean distance ⭐
+const RANGE_SQUARES = 5; // 5 grid squares = 10 meters (if grid is 2m/square)
 
 function getGridDistance(a, b) {
   const dx = Math.abs(a.x - b.x) / canvas.grid.size;
@@ -103,39 +102,17 @@ function getGridDistance(a, b) {
 
 const tokensInRange = canvas.tokens.placeables.filter(token => {
   if (!token.actor || token === originToken) return false;
-  const dist = getGridDistance(originToken.center, token.center);
+  const dist = getGridDistance(targetToken.center, token.center); // ⭐ selected or target Change to originToken.center if necessary
   return dist <= RANGE_SQUARES;
 });
 
-// --- Declare variables for use outside loop ---
-let lastToken;
-let lastHP_MODIFIER;
-let lastWP_MODIFIER;
-let lastNetHPDamage;
+// ⭐ Add the target token back into the affected list ⭐
+if (!tokensInRange.includes(targetToken) && target !== originToken) {
+  tokensInRange.push(target); // <-- include target, if not caster
+}
 
 for (const token of tokensInRange) {
   const actor = token.actor;
-
-// --- Get current stats and apply HP and WP damage ---
-const armor = getProperty(actor.system, "armor.value") ?? 1;
-const WP_MODIFIER = -1 * (Math.floor(Math.random() * 6) + 1); // -1 to -6
-const HP_MODIFIER = -1 * (Math.floor(Math.random() * 6) + 1); // -1 to -6
-const currentWP = getProperty(actor.system, "willPoints.value") ?? 1;
-const currentHP = getProperty(actor.system, "hitPoints.value") ?? 1;
-const netHPDamage = Math.max(0, Math.abs(HP_MODIFIER) - armor);
-const newWP = Math.max(0, currentWP + WP_MODIFIER);
-const newHP = Math.max(0, currentHP - netHPDamage);
-
-  await actor.update({
-    "system.willPoints.value": newWP,
-    "system.hitPoints.value": newHP
-  });
-
-// --- Capture last token's values for use outside loop ---
-  lastToken = token;
-  lastHP_MODIFIER = HP_MODIFIER;
-  lastWP_MODIFIER = WP_MODIFIER;
-  lastNetHPDamage = netHPDamage;
 
 // --- TEMPORARY EFFECT for visual indicator ---
   const existingEffect = actor.effects.find(e => e.name === EFFECT_LABEL);
@@ -161,27 +138,30 @@ const newHP = Math.max(0, currentHP - netHPDamage);
 
   }
 
-// --- Show damage in chat ---
-const chatDescription = `
-  <strong>${lastToken.name} is now @UUID[JournalEntry.SbbSMsuvWeo3HaID.JournalEntryPage.6WPxPxUjh4W80RNy#cold]{${EFFECT_LABEL}}</strong><br>
-  ${lastToken.name} suffered <strong>${Math.abs(HP_MODIFIER)} HP (${lastNetHPDamage} HP after armor)</strong> and <strong>${Math.abs(lastWP_MODIFIER)} WP</strong> damage from the effects of @UUID[Item.yG2Y8TjezfLY8Sth]{Frost}.
-`;
-
-ChatMessage.create({
-  content: chatDescription,
-  speaker: ChatMessage.getSpeaker({ actor: originToken.actor }),
-  type: CONST.CHAT_MESSAGE_TYPES.EMOTE
-});
-
 }
   new Sequence()
     .sound(SOUND_PATH)
     .effect()
       .file(EFFECT_PATH)
       .scale(SCALE)
-      .atLocation(selected)
-      .belowTokens()
-      .persist()
+      .atLocation(targetToken) // ⭐ selected or targetToken
+	   .fadeIn(2000)
+	   .fadeOut(2000)
     .play();
+
+// --- Second animation (if needed) ---
+  new Sequence ()
+  	.effect ()
+  	.file ("jb2a.template_circle.whirl.loop.green")
+  	.atLocation(targetToken) // ⭐ selected or targetToken
+	.tint("#154f2c")
+	.opacity(0.7)
+	.scale(2.4)
+	.fadeIn(5000)
+	.belowTokens()
+	.persist()
+
+.play()
+
 }
 })();
