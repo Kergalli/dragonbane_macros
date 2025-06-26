@@ -1,0 +1,177 @@
+// SPELL WITH ROLL AND AOE
+(async () => {
+if (!item) {
+  ui.notifications.warn("This macro must be run from an item.");
+  return;
+}
+
+// --- Setup ---
+const itemName     = item.name;
+const wpCost       = item.system.rank * 2;
+const description  = await TextEditor.enrichHTML(item.system.description, { async: true });
+const SOUND_PATH   = "sounds/Damage/Cold/ice-storm-1.mp3";
+AudioHelper.preloadSound(SOUND_PATH);
+const EFFECT_PATH  = "jb2a.impact.frost.white.01";
+const SCALE        = 1.0;
+
+// --- Token, Actor, Spell, and WP Checks ---
+const selected = canvas.tokens.controlled[0];
+if (!selected) {
+  ui.notifications.warn(`Please select your token before casting ${itemName}.`);
+  return;
+}
+
+const myTokenActor = selected.actor;
+const spell = myTokenActor.items.find(i => i.name === itemName && i.type === item.type);
+if (!spell) {
+  ui.notifications.warn(`You do not know the spell ${itemName}!`);
+  return;
+}
+
+const wpValue = myTokenActor.system.willPoints.value;
+if (wpValue < wpCost) {
+  ui.notifications.warn("Not enough Willpower points!");
+  return;
+}
+
+// --- Untarget any previously selected tokens ---
+game.user.updateTokenTargets([]);
+
+// --- Target selection (comment out if not needed in Sequencer) ---
+// const target = Array.from(game.user.targets)[0];
+// if (game.user.targets.size === 0) {
+//   ui.notifications.warn(`Please choose the target of the spell before casting ${itemName}.`);
+//   return; 
+// }
+
+// --- Spell roll dialog box and success evaluation ---
+let rollResult;
+
+try {
+  rollResult = await game.dragonbane.rollItem(itemName);
+} catch (error) {
+  ui.notifications.warn(`${itemName} casting was cancelled.`);
+  return;
+}
+
+// --- Check if the user canceled the roll ---
+if (!rollResult?.postRollData) {
+  ui.notifications.warn(`${itemName} casting was cancelled.`);
+  return;
+}
+
+if (rollResult.postRollData.success) {
+  const name = myTokenActor?.name ?? "Unnamed Hero";
+  const remainingWP = myTokenActor.system.willPoints.value;
+  ui.notifications.info(`${name} has ${remainingWP} WP remaining.`);
+
+  ChatMessage.create({
+    user: game.user.id,
+    speaker: ChatMessage.getSpeaker({ token: selected }),
+    content: `<b>${name}</b> casts ${itemName}! ${description}`
+  });
+
+// -- Apply custom status - Condition Array in console --> CONFIG.statusEffects ---
+//  selected.actor.toggleStatusEffect("7LOyAthpOt1TFBLq");
+
+// --- Configuration of AOE ---
+const RANGE = 4; // in meters
+const EFFECT_LABEL = "Cold";
+const EFFECT_ICON = "icons/svg/frozen.svg";
+const EFFECT_DURATION_SECONDS = 900;
+const originToken = canvas.tokens.controlled[0];
+const originActor = originToken.actor;
+
+// --- Calculate Range using grid squares instead of Euclidean distance ---
+const RANGE_SQUARES = 2; // 2 grid squares = 4 meters (if grid is 2m/square)
+
+function getGridDistance(a, b) {
+  const dx = Math.abs(a.x - b.x) / canvas.grid.size;
+  const dy = Math.abs(a.y - b.y) / canvas.grid.size;
+  return Math.max(dx, dy); // Chebyshev distance: diagonals = 1
+}
+
+const tokensInRange = canvas.tokens.placeables.filter(token => {
+  if (!token.actor || token === originToken) return false;
+  const dist = getGridDistance(originToken.center, token.center);
+  return dist <= RANGE_SQUARES;
+});
+
+// --- Declare variables for use outside loop ---
+let lastToken;
+let lastHP_MODIFIER;
+let lastWP_MODIFIER;
+let lastNetHPDamage;
+
+for (const token of tokensInRange) {
+  const actor = token.actor;
+
+// --- Get current stats and apply HP and WP damage ---
+const armor = getProperty(actor.system, "armor.value") ?? 1;
+const WP_MODIFIER = -1 * (Math.floor(Math.random() * 6) + 1); // -1 to -6
+const HP_MODIFIER = -1 * (Math.floor(Math.random() * 6) + 1); // -1 to -6
+const currentWP = getProperty(actor.system, "willPoints.value") ?? 1;
+const currentHP = getProperty(actor.system, "hitPoints.value") ?? 1;
+const netHPDamage = Math.max(0, Math.abs(HP_MODIFIER) - armor);
+const newWP = Math.max(0, currentWP + WP_MODIFIER);
+const newHP = Math.max(0, currentHP - netHPDamage);
+
+  await actor.update({
+    "system.willPoints.value": newWP,
+    "system.hitPoints.value": newHP
+  });
+
+// --- Capture last token's values for use outside loop ---
+  lastToken = token;
+  lastHP_MODIFIER = HP_MODIFIER;
+  lastWP_MODIFIER = WP_MODIFIER;
+  lastNetHPDamage = netHPDamage;
+
+// --- TEMPORARY EFFECT for visual indicator ---
+  const existingEffect = actor.effects.find(e => e.name === EFFECT_LABEL);
+  if (!existingEffect) {
+    const effectData = {
+      name: EFFECT_LABEL,
+      icon: EFFECT_ICON,
+      origin: `Scene.${canvas.scene.id}.Token.${originToken.id}`,
+      duration: {
+        seconds: EFFECT_DURATION_SECONDS,
+	startTime: game.time.worldTime
+      },
+      changes: [
+        {
+          key: "flags.core.statusId",
+          mode: CONST.ACTIVE_EFFECT_MODES.OVERRIDE,
+          value: "debuff",
+          priority: 10
+        }
+      ]
+};
+    await actor.createEmbeddedDocuments("ActiveEffect", [effectData]);
+
+  }
+
+// --- Show damage in chat ---
+const chatDescription = `
+  <strong>${lastToken.name} is now @UUID[JournalEntry.SbbSMsuvWeo3HaID.JournalEntryPage.6WPxPxUjh4W80RNy#cold]{${EFFECT_LABEL}}</strong><br>
+  ${lastToken.name} suffered <strong>${Math.abs(HP_MODIFIER)} HP (${lastNetHPDamage} HP after armor)</strong> and <strong>${Math.abs(lastWP_MODIFIER)} WP</strong> damage from the effects of @UUID[Item.yG2Y8TjezfLY8Sth]{Frost}.
+`;
+
+ChatMessage.create({
+  content: chatDescription,
+  speaker: ChatMessage.getSpeaker({ actor: originToken.actor }),
+  type: CONST.CHAT_MESSAGE_TYPES.EMOTE
+});
+
+}
+  new Sequence()
+    .sound(SOUND_PATH)
+    .effect()
+      .file(EFFECT_PATH)
+      .scale(SCALE)
+      .atLocation(selected)
+      .belowTokens()
+      .persist()
+    .play();
+}
+})();
