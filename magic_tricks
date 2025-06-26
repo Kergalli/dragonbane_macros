@@ -1,16 +1,17 @@
-// MAGIC TRICK: WP Spend with Dialog
+// MAGIC TRICK WITH WP SPEND DIALOG 
 if (typeof item === "undefined") {
   ui.notifications.warn("This macro must be run from within an ItemMacro.");
   return;
 }
 
-// --- Setup ---
+// ⭐ Setup ⭐
 const itemName    = item.name;
-const wpCost      = 1;
+const wpCost      = 1; // Generally will not change, most Magic tricks cost 1 WP
 const SOUND_PATH  = "sounds/Spells/Whoosh/spell-whoosh-13.mp3";
 await AudioHelper.preloadSound(SOUND_PATH);
 const EFFECT_PATH = "jb2a.wind_stream.1200.white";
-const DEBUG_MODE  = false;
+const SCALE        = 1.0;
+const status_id	   = "prone" // Condition Array in console --> CONFIG.statusEffects
 
 // --- Token & Actor Checks ---
 const selected = canvas.tokens.controlled[0];
@@ -25,6 +26,12 @@ if (!spell) {
   ui.notifications.warn(`You do not know the magic trick ${itemName}!`);
   return;
 }
+
+// ⭐ Confirm target selection (if needed) ⭐
+// if (game.user.targets.size === 0) {
+//   ui.notifications.warn(`Please choose the target of the spell before casting ${itemName}.`);
+//   return; 
+// }
 
 const wpValue = myTokenActor.system.willPoints.value;
 if (wpValue < wpCost) {
@@ -49,7 +56,7 @@ new Dialog({
 	const description = await TextEditor.enrichHTML(item.system.description, { async: true });
 
 	const chatContent = `
-  	  <b>${name}</b> casts <i>${itemName}</i>!
+  	  <b>${name}</b> casts <i>${itemName}</i>!<br><br>
   	  <details>
    	  <summary><strong>Show Spell Description</strong></summary>
     	  ${description}
@@ -62,11 +69,17 @@ new Dialog({
           content: chatContent
         });
 
+// --- Apply custom status ---
+  selected.actor.toggleStatusEffect(status_id);
+
+// const target = Array.from(game.user.targets)[0]; // ⭐ Enable if Sequencer needs target
+
         new Sequence()
           .sound(SOUND_PATH)
           .effect()
             .file(EFFECT_PATH)
-            .atLocation(selected)
+            .atLocation(selected) // ⭐ selected or target
+	    .scale(SCALE)
           .play();
       }
     },
