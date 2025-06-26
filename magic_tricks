@@ -48,9 +48,9 @@ new Dialog({
 	ui.notifications.info(`${name} has ${remainingWP} WP remaining.`);
 
 	const chatContent = `
-  	  <b>${name}</b> casts <i>${itemName}</i>!
+  	  <b>${name}</b> casts <i>${itemName}</i>!<br><br>
   	  <details>
-   	  <summary><strong>Show Spell Description</strong></summary>
+   	  <summary><strong>Show Magic Trick Description</strong></summary>
     	  ${description}
   	  </details>
 	`;
