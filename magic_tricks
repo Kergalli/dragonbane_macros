@@ -1,16 +1,16 @@
 // MAGIC TRICK: WP Spend with Dialog
-if (!item) {
-  ui.notifications.warn("This macro must be run from an item.");
+if (typeof item === "undefined") {
+  ui.notifications.warn("This macro must be run from within an ItemMacro.");
   return;
 }
 
 // --- Setup ---
 const itemName    = item.name;
 const wpCost      = 1;
-const description = await TextEditor.enrichHTML(item.system.description, { async: true });
 const SOUND_PATH  = "sounds/Spells/Whoosh/spell-whoosh-13.mp3";
-AudioHelper.preloadSound(SOUND_PATH);
-const EFFECT_PATH = item.getFlag("world", "effectPath") ?? "jb2a.wind_stream.1200.white";
+await AudioHelper.preloadSound(SOUND_PATH);
+const EFFECT_PATH = "jb2a.wind_stream.1200.white";
+const DEBUG_MODE  = false;
 
 // --- Token & Actor Checks ---
 const selected = canvas.tokens.controlled[0];
@@ -46,11 +46,12 @@ new Dialog({
         const name = myTokenActor?.name ?? "Unnamed Hero";
 	const remainingWP = myTokenActor.system.willPoints.value;
 	ui.notifications.info(`${name} has ${remainingWP} WP remaining.`);
+	const description = await TextEditor.enrichHTML(item.system.description, { async: true });
 
 	const chatContent = `
-  	  <b>${name}</b> casts <i>${itemName}</i>!<br><br>
+  	  <b>${name}</b> casts <i>${itemName}</i>!
   	  <details>
-   	  <summary><strong>Show Magic Trick Description</strong></summary>
+   	  <summary><strong>Show Spell Description</strong></summary>
     	  ${description}
   	  </details>
 	`;
