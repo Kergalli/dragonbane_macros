@@ -1,0 +1,29 @@
+// --- Removes all status effects from all selected tokens ---
+(async () => {
+  // ✅ Ensure at least one token is selected
+  const tokens = canvas.tokens.controlled;
+  if (tokens.length === 0) {
+    ui.notifications.warn("Please select one or more tokens.");
+    return;
+  }
+
+  let totalRemoved = 0;
+
+  for (const token of tokens) {
+    const actor = token.actor;
+    const effects = actor.effects;
+
+    if (effects.size === 0) {
+      ui.notifications.info(`${token.name} has no active effects.`);
+      continue;
+    }
+
+    const effectIds = effects.map(effect => effect.id);
+    await actor.deleteEmbeddedDocuments("ActiveEffect", effectIds);
+
+    ui.notifications.info(`Removed ${effectIds.length} effect(s) from ${token.name}.`);
+    totalRemoved += effectIds.length;
+  }
+
+  ui.notifications.info(`Finished removing a total of ${totalRemoved} effect(s) from ${tokens.length} token(s).`);
+})();
