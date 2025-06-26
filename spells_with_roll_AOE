@@ -1,18 +1,18 @@
 // SPELL WITH ROLL AND AOE
 (async () => {
-if (!item) {
-  ui.notifications.warn("This macro must be run from an item.");
+if (typeof item === "undefined") {
+  ui.notifications.warn("This macro must be run from within an ItemMacro.");
   return;
 }
 
 // --- Setup ---
 const itemName     = item.name;
 const wpCost       = item.system.rank * 2;
-const description  = await TextEditor.enrichHTML(item.system.description, { async: true });
 const SOUND_PATH   = "sounds/Damage/Cold/ice-storm-1.mp3";
-AudioHelper.preloadSound(SOUND_PATH);
+await AudioHelper.preloadSound(SOUND_PATH);
 const EFFECT_PATH  = "jb2a.impact.frost.white.01";
 const SCALE        = 1.0;
+const DEBUG_MODE   = false;
 
 // --- Token, Actor, Spell, and WP Checks ---
 const selected = canvas.tokens.controlled[0];
@@ -49,6 +49,7 @@ let rollResult;
 
 try {
   rollResult = await game.dragonbane.rollItem(itemName);
+  if (DEBUG_MODE) console.log(`[Spell Macro] ${itemName} - Roll Result:`, rollResult);
 } catch (error) {
   ui.notifications.warn(`${itemName} casting was cancelled.`);
   return;
@@ -64,6 +65,7 @@ if (rollResult.postRollData.success) {
   const name = myTokenActor?.name ?? "Unnamed Hero";
   const remainingWP = myTokenActor.system.willPoints.value;
   ui.notifications.info(`${name} has ${remainingWP} WP remaining.`);
+  const description  = await TextEditor.enrichHTML(item.system.description, { async: true });
 
 const chatContent = `
   <b>${name}</b> casts <i>${itemName}</i>!<br><br>
