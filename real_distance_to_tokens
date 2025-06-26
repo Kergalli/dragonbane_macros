@@ -1,0 +1,21 @@
+// --- Configuration ---
+const RANGE_METERS = 4;
+
+// --- Get origin token ---
+const originToken = canvas.tokens.controlled[0];
+if (!originToken) {
+  ui.notifications.warn("Please select a token to center the AoE.");
+  return;
+}
+
+// --- Measure tokens in range ---
+const tokensInRange = canvas.tokens.placeables.filter(token => {
+  if (!token.actor || token === originToken) return false;
+
+  const dist = canvas.grid.measureDistance(originToken.center, token.center);
+  console.log(`${token.name} is ${dist.toFixed(2)}m from ${originToken.name}`);
+  return dist <= RANGE_METERS;
+});
+
+// --- Notify ---
+ui.notifications.info(`Found ${tokensInRange.length} token(s) within ${RANGE_METERS} meters. Open the console to see results.`);
