@@ -9,6 +9,7 @@ const itemName    = item.name;
 const wpCost      = 1;
 const description = await TextEditor.enrichHTML(item.system.description, { async: true });
 const SOUND_PATH  = "sounds/Spells/Whoosh/spell-whoosh-13.mp3";
+AudioHelper.preloadSound(SOUND_PATH);
 const EFFECT_PATH = item.getFlag("world", "effectPath") ?? "jb2a.wind_stream.1200.white";
 
 // --- Token & Actor Checks ---
