@@ -1,0 +1,85 @@
+// FOR TESTING ONLY
+// Adds all available spell items from the Items directory to selected token's character sheet
+// Check if a token is selected
+if (!token) {
+    ui.notifications.error("Please select a token first!");
+    return;
+}
+
+// Get the actor from the selected token
+const actor = token.actor;
+if (!actor) {
+    ui.notifications.error("Selected token has no associated character!");
+    return;
+}
+
+// Get all spells from the Items directory
+const allSpells = game.items.filter(item => item.type === "spell");
+
+if (allSpells.length === 0) {
+    ui.notifications.error("No spells found in the Items directory!");
+    return;
+}
+
+// Get spells the character already has
+const existingSpells = actor.items.filter(item => item.type === "spell");
+const existingSpellNames = new Set(existingSpells.map(spell => spell.name.toLowerCase()));
+
+// Filter out spells the character already has
+const newSpells = allSpells.filter(spell => !existingSpellNames.has(spell.name.toLowerCase()));
+
+if (newSpells.length === 0) {
+    ui.notifications.info(`${actor.name} already has all available spells!`);
+    return;
+}
+
+// Confirm with the user before adding
+const confirmed = await Dialog.confirm({
+    title: "Add All Spells",
+    content: `<p>Are you sure you want to add <strong>${newSpells.length} new spell(s)</strong> to <strong>${actor.name}</strong>?</p>
+            <p>Character currently has: <strong>${existingSpells.length} spell(s)</strong></p>
+            <p>Total spells available: <strong>${allSpells.length} spell(s)</strong></p>
+            <p><em>This will add a lot of items to the character sheet!</em></p>`,
+    yes: () => true,
+    no: () => false
+});
+
+if (!confirmed) {
+    ui.notifications.info("Spell addition cancelled.");
+    return;
+}
+
+// Show progress message
+ui.notifications.info(`Adding ${newSpells.length} spells from Items directory to ${actor.name}...`);
+
+// Prepare spell data for creation
+const spellData = newSpells.map(spell => {
+    // Create a clean copy of the spell data
+    const data = spell.toObject();
+    // Remove the _id to let Foundry generate new ones
+    delete data._id;
+    return data;
+});
+
+try {
+    // Add all spell items to the character
+    await actor.createEmbeddedDocuments("Item", spellData);
+    
+    // Success message
+    ui.notifications.info(`Successfully added ${newSpells.length} spell(s) to ${actor.name}!`);
+    
+    // Optional: Send GM-only chat message with details
+    await ChatMessage.create({
+        user: game.users.find(u => u.isGM)?.id || game.user.id,
+        whisper: ChatMessage.getWhisperRecipients("GM"),
+        blind: true,
+        content: `<div style="border: 2px solid #006400; padding: 10px; background: #f0fff0; margin: 5px 0;">
+        <strong>Spells Added:</strong> ${newSpells.length} spell(s) added to <strong>${actor.name}</strong>.<br>
+        <strong>Total spells now:</strong> ${existingSpells.length + newSpells.length}
+        </div>`
+    });
+    
+} catch (error) {
+    console.error("Error adding spells:", error);
+    ui.notifications.error("An error occurred while adding spells. Check the console for details.");
+}
