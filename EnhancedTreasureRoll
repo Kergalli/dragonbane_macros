@@ -1,0 +1,111 @@
+// Foundry VTT Treasure Table Macro
+// Prompts for number of rolls and whispers results to GM
+// Targets the main Dragonbane Treasure table
+// Supports nested tables and will report errors in tables or returned null results
+
+// Create dialog to get number of rolls
+new Dialog({
+  title: "Treasure Table Rolls (GM Only)",
+  content: `
+    <form>
+      <div class="form-group">
+        <label>Number of Treasure Tables Rolls:</label>
+        <select name="numRolls" style="width: 100px !important; margin-left: 10px !important; max-width: 100px !important; text-align: center !important;">
+          <option value="1">1</option>
+          <option value="2">2</option>
+          <option value="3">3</option>
+          <option value="4">4</option>
+          <option value="5">5</option>
+          <option value="6">6</option>
+          <option value="7">7</option>
+          <option value="8">8</option>
+          <option value="9">9</option>
+          <option value="10">10</option>
+        </select>
+      </div>
+    </form>
+  `,
+  buttons: {
+    roll: {
+      label: "Roll",
+      callback: async (html) => {
+        const numRolls = parseInt(html.find('[name="numRolls"]').val());
+        
+        // Find the Treasure table
+        const treasureTable = game.tables.getName("Treasure");
+        
+        if (!treasureTable) {
+          ui.notifications.error("Could not find a table named 'Treasure'");
+          return;
+        }
+        
+        // Perform the rolls
+        let results = [];
+        for (let i = 0; i < numRolls; i++) {
+          const roll = await treasureTable.roll();
+          
+          // Handle multiple results (in case of nested table rolls)
+          for (const result of roll.results) {
+            let displayText = "";
+            
+            // Check if result is a linked document (Item type)
+            if (result.type === "document") {
+              if (result.documentCollection && result.documentId) {
+                // Valid document reference
+                const uuid = `${result.documentCollection}.${result.documentId}`;
+                const doc = await fromUuid(uuid);
+                if (doc) {
+                  displayText = `@UUID[${uuid}]{${doc.name}}`;
+                } else {
+                  displayText = result.text || `[Document: ${result.documentId}]`;
+                }
+              } else {
+                // Broken document reference - should be rare now that items are fixed
+                const rangeInfo = result.range ? `${result.range[0]}-${result.range[1]}` : "unknown range";
+                let tableName = "unknown table";
+                
+                if (roll.table?.name) {
+                  tableName = roll.table.name;
+                } else if (result.flags?.core?.sourceId) {
+                  tableName = result.flags.core.sourceId.split('.').pop();
+                }
+                
+                displayText = `[Broken Item Reference - Table: "${tableName}", Range: ${rangeInfo}]`;
+              }
+            } else {
+              // Text result
+              displayText = result.text || "[Empty Result]";
+            }
+            
+            results.push(displayText);
+          }
+        }
+        
+        // Create chat message visible only to GM
+        const chatContent = `
+          <div class="dice-roll">
+            <div class="dice-result">
+              <h4>Treasure Table Results (${numRolls} roll${numRolls > 1 ? 's' : ''})</h4>
+              <ul>
+                ${results.map(result => `<li>${result}</li>`).join('')}
+              </ul>
+            </div>
+          </div>
+        `;
+        
+        ChatMessage.create({
+          content: chatContent,
+          whisper: game.users.filter(u => u.isGM).map(u => u.id),
+          speaker: ChatMessage.getSpeaker({alias: "Treasure Table"})
+        });
+      }
+    },
+    cancel: {
+      label: "Cancel"
+    }
+  },
+  default: "roll",
+  options: {
+    width: 120
+  }
+}).render(true);
