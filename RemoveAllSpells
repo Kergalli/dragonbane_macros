@@ -1,0 +1,54 @@
+// FOR TESTING ONLY
+// Removes all spell items from selected token's character sheet
+
+// Check if a token is selected
+if (!token) {
+    ui.notifications.error("Please select a token first!");
+    return;
+}
+
+// Get the actor from the selected token
+const actor = token.actor;
+if (!actor) {
+    ui.notifications.error("Selected token has no associated character!");
+    return;
+}
+
+// Find all spell items (assuming they have type "spell" in Dragonbane system)
+const spellItems = actor.items.filter(item => item.type === "spell");
+
+if (spellItems.length === 0) {
+    ui.notifications.info(`${actor.name} has no spells to remove.`);
+    return;
+}
+
+// Confirm with the user before deletion
+const confirmed = await Dialog.confirm({
+    title: "Remove All Spells",
+    content: `<p>Are you sure you want to remove <strong>${spellItems.length} spell(s)</strong> from <strong>${actor.name}</strong>?</p>
+            <p><em>This action cannot be undone!</em></p>`,
+    yes: () => true,
+    no: () => false
+});
+
+if (!confirmed) {
+    ui.notifications.info("Spell removal cancelled.");
+    return;
+}
+
+// Remove all spell items
+const spellIds = spellItems.map(spell => spell.id);
+await actor.deleteEmbeddedDocuments("Item", spellIds);
+
+// Success message
+ui.notifications.info(`Removed ${spellItems.length} spell(s) from ${actor.name}.`);
+
+// Optional: Send GM-only chat message with details
+await ChatMessage.create({
+    user: game.users.find(u => u.isGM)?.id || game.user.id,
+    whisper: ChatMessage.getWhisperRecipients("GM"),
+    blind: true,
+    content: `<div style="border: 2px solid #8B0000; padding: 10px; background: #ffe4e1; margin: 5px 0;">
+    <strong>Spells Removed:</strong> ${spellItems.length} spell(s) removed from <strong>${actor.name}</strong>.
+    </div>`
+});
