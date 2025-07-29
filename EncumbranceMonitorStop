@@ -1,4 +1,4 @@
-// STOP ENCUMBRANCE MONITOR
+// Stop Encumbrance Monitor
 
 if (!game.user.isGM) return ui.notifications.error("GM only!");
 
