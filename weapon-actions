@@ -1,4 +1,4 @@
-// Dragonbane Action Rules Monitor
+// Dragonbane Action Rules Monitor - Abandoned - now part of Dragonbane Combat Assistant
 // Run once to automatically show rules for combat actions when taken
 
 (function() {
