@@ -1,4 +1,4 @@
-// ENCUMBRANCE MONITOR - Monitors characters in a defined folder on a timed interval
+// Encumbrance Monitor - Monitors characters in a defined folder on a timed interval
 
 window.EncumbranceMonitor = (function () {
     const CONFIG = {
