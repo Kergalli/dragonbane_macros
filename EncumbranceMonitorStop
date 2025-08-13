@@ -1,7 +1,0 @@
-// Stop Encumbrance Monitor
-
-if (!game.user.isGM) return ui.notifications.error("GM only!");
-
-const highestId = setTimeout(() => {}, 0);
-for (let i = 0; i <= highestId; i++) clearInterval(i);
-ui.notifications.info("Encumbrance Monitor stopped!");
