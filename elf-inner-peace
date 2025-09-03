@@ -1,0 +1,112 @@
+/**
+ * Elf Inner Peace Stretch Rest Macro
+ * For Foundry VTT Dragonbane System
+ */
+
+async function elfStretchRest() {
+    // Get the selected token's actor
+    const token = canvas.tokens.controlled[0];
+    if (!token) {
+        ui.notifications.warn("Please select your token first.");
+        return;
+    }
+       
+    // Check if stretch rest is available
+    const canRestStretch = actor.system?.canRestStretch ?? true;
+    if (!canRestStretch) {
+        const message = `${actor.name} has already taken a Stretch Rest.`;
+        ui.notifications.info(message);
+        return;
+    }
+    
+    try {
+        // Create the roll
+        const roll = new Roll('2d6[Hit Points] + 2d6[Willpower Points]');
+        await roll.evaluate();
+        
+        // Set dice colors like core Dragonbane 
+        if (roll.dice.length >= 2) {
+            // Red for HP dice
+            roll.dice[0].options.appearance = {
+                name: 'inline red',
+                foreground: '#ffffff',
+                background: '#6F0000',
+                edge: '#6F0000',
+            };
+            // Green for WP dice
+            roll.dice[1].options.appearance = {
+                name: 'inline green',
+                foreground: '#ffffff',
+                background: '#00a000',
+                edge: '#00a000',
+            };
+        }
+        
+        // Calculate HP healing
+        const hpHealed = Number(roll.terms[0].total);
+        
+        // Calculate WP restoration 
+        const wpRestored = Number(roll.terms[2].total);
+        
+        // Get current values
+        const currentHP = actor.system.hitPoints.value;
+        const maxHP = actor.system.hitPoints.max;
+        const currentWP = actor.system.willPoints.value;
+        const maxWP = actor.system.willPoints.max;
+        
+        // Calculate new values (don't exceed maximums)
+        const newHP = Math.min(maxHP, currentHP + hpHealed);
+        const newWP = Math.min(maxWP, currentWP + wpRestored);
+        
+        // Create the formula display like core Dragonbane
+        let formula = `
+        <i class="fa-solid fa-circle-info"></i>
+        <div class="permission-observer dice-tooltip" data-actor-id="${actor.uuid}" style="text-align: left; margin-left: 0.5em">
+            <div class="wrapper">`;
+        if (newHP !== currentHP) {
+            formula += `<b>${game.i18n.localize("DoD.ui.character-sheet.hp")}:</b> ${currentHP} <i class="fa-solid fa-arrow-right"></i> ${newHP}<br>`;
+        }
+        if (newWP !== currentWP) {
+            formula += `<b>${game.i18n.localize("DoD.ui.character-sheet.wp")}:</b> ${currentWP} <i class="fa-solid fa-arrow-right"></i> ${newWP}<br>`;
+        }
+        formula += "</div></div>";
+        
+        // Update actor with new HP and WP values
+        const updateData = {
+            'system.hitPoints.value': newHP,
+            'system.willPoints.value': newWP,
+            'system.canRestStretch': false // Mark stretch rest as used
+        };
+        
+        await actor.update(updateData);
+        
+        // Create the roll message context like core Dragonbane
+        const context = {
+            formula: formula,
+            user: game.user.id,
+            tooltip: await roll.getTooltip()
+        };
+        
+        // Use the core Dragonbane template
+        const template = "systems/dragonbane/templates/partials/roll-no-total.hbs";
+        const content = await renderTemplate(template, context);
+        
+        // Inner Peace flavor text
+        const flavor = `<b>${actor.name}</b> enters deep meditation and recovers <b>${newHP - currentHP}</b> HP, <b>${newWP - currentWP}</b> WP and up to 2 conditions.`;
+        
+        const msg = await roll.toMessage({
+            user: game.user.id,
+            speaker: ChatMessage.getSpeaker({ actor: actor }),
+            actor: actor,
+            flavor: flavor,
+            content: content
+        });
+              
+    } catch (error) {
+        console.error('Inner Peace Error:', error);
+        ui.notifications.error('Failed to perform Inner Peace Stretch Rest.');
+    }
+}
+
+// Execute the function
+elfStretchRest();
