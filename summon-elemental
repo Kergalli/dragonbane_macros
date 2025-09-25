@@ -1,0 +1,38 @@
+// Dragonbane - Summon Elemental
+// Uses Foundry Summons 2 and Transient Compendium Actor Library Modules
+// Build one macro for each elemental type, changing UUID for each power level
+// Put this in the macro section of an Automated Animation for the approriate spell (spell needs n/a in damage field to work with AA)
+
+const CREATURE_UUIDS = {
+  1: "Actor.uxwdYZxZewJNYSJj", // Elemental Power Level 1 UUID
+  2: "Actor.lMHpFrQjAWqx3dIT",  // Elemental Power Level 2 UUID
+  3: "Actor.CcOA6lwVZuW64nCr" / / Elemental Power Level 3 UUID
+};
+
+// Get power level of spell
+function getPowerLevel() {
+  const messages = game.messages.contents.slice(-5);
+  
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const message = messages[i];
+
+    const match = message.content.match(/data-power-level="(\d+)"/);
+    
+    if (match) {
+      const level = parseInt(match[1]);
+      if (level >= 1 && level <= 3) {
+        return level;
+      }
+    }
+  }
+  
+  return 1; // Default to Power Level 1
+}
+
+// Summon Elemental
+const powerLevel = getPowerLevel();
+const uuid = CREATURE_UUIDS[powerLevel];
+
+if (foundrySummons && uuid) {
+  foundrySummons.pick({ uuid: uuid });
+}
