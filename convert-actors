@@ -1,14 +1,9 @@
 /**
  * Dragonbane Actor Type Converter
- *
- * This macro allows you to convert between Character, NPC, and Monster actor types.
- * It will transfer all compatible data fields and all items to the new actor.
- *
  * Usage: Select a single actor token, then run this macro.
  */
 
 (async () => {
-  // Check if a single actor is selected
   const tokens = canvas.tokens.controlled;
   if (tokens.length !== 1) {
     ui.notifications.warn("Please select exactly one token/actor to convert.");
@@ -31,10 +26,8 @@
     return;
   }
 
-  // Determine available conversion targets
   const targetTypes = validTypes.filter((t) => t !== currentType);
 
-  // Build the dialog content
   let dialogContent = `
         <form>
             <div class="form-group">
@@ -73,7 +66,6 @@
         </form>
     `;
 
-  // Create the dialog
   new Dialog(
     {
       title: "Convert Actor Type",
@@ -86,7 +78,6 @@
             const targetType = html.find('[name="targetType"]').val();
             const newName = html.find('[name="newName"]').val();
 
-            // Get conversion-specific values if present
             let conversionData = {};
 
             if (targetType === "monster") {
@@ -99,7 +90,6 @@
               conversionData.armor = armor;
             } else if (currentType === "monster") {
               if (targetType === "character") {
-                // Converting Monster → Character: get attributes
                 conversionData.attributes = {
                   str: parseInt(html.find('[name="str"]').val()) || 10,
                   con: parseInt(html.find('[name="con"]').val()) || 10,
@@ -109,7 +99,6 @@
                   cha: parseInt(html.find('[name="cha"]').val()) || 10,
                 };
               } else if (targetType === "npc") {
-                // Converting Monster → NPC: get WIL for WP and damage bonuses
                 conversionData.wil =
                   parseInt(html.find('[name="wil"]').val()) || 10;
                 conversionData.damageBonus = {
@@ -118,7 +107,6 @@
                 };
               }
             } else if (currentType === "npc" && targetType === "character") {
-              // Converting NPC → Character: get attributes
               conversionData.attributes = {
                 str: parseInt(html.find('[name="str"]').val()) || 10,
                 con: parseInt(html.find('[name="con"]').val()) || 10,
@@ -139,7 +127,6 @@
       },
       default: "convert",
       render: (html) => {
-        // Add dynamic fields based on target type selection
         const updateFields = () => {
           const targetType = html.find('[name="targetType"]').val();
           const fieldsDiv = html.find("#conversionFields");
@@ -167,9 +154,7 @@
                         </div>
                     `);
           } else if (currentType === "monster" || currentType === "npc") {
-            // Converting FROM monster or NPC
             if (targetType === "character") {
-              // Monster/NPC → Character: need all attributes
               fieldsDiv.append(`
                             <div class="form-group">
                                 <label><strong>Set Attributes:</strong></label>
@@ -202,7 +187,6 @@
                             </div>
                         `);
             } else if (targetType === "npc") {
-              // Monster → NPC: need WIL for WP and damage bonuses
               fieldsDiv.append(`
                             <div class="form-group">
                                 <label><strong>Set Willpower:</strong></label>
@@ -238,7 +222,7 @@
         };
 
         html.find('[name="targetType"]').on("change", updateFields);
-        updateFields(); // Initial call
+        updateFields();
       },
     },
     {
@@ -248,33 +232,24 @@
   ).render(true);
 })();
 
-/**
- * Convert an actor from one type to another
- */
 async function convertActor(sourceActor, targetType, newName, conversionData) {
   try {
     ui.notifications.info(`Converting ${sourceActor.name} to ${targetType}...`);
 
-    // Get source actor data
     const sourceData = sourceActor.toObject();
     const sourceType = sourceActor.type;
 
-    // IMPORTANT: Use the actor's actual system data for HP/WP, not toObject()
-    // toObject() recalculates HP/WP from attributes, which gives wrong values
     const sourceSystem = sourceActor.system;
 
-    // Prepare new actor data structure
     let newActorData = {
       name: newName,
       type: targetType,
       img: sourceData.img,
       system: {},
-      items: sourceData.items, // Transfer all items
-      effects: sourceData.effects, // Transfer all active effects
+      items: sourceData.items,
+      effects: sourceData.effects,
     };
 
-    // Convert based on source and target types
-    // Use sourceSystem (from actor.system) instead of sourceData.system for correct HP/WP
     if (sourceType === "character" && targetType === "npc") {
       newActorData.system = convertCharacterToNPC(sourceSystem);
     } else if (sourceType === "character" && targetType === "monster") {
@@ -304,10 +279,8 @@ async function convertActor(sourceActor, targetType, newName, conversionData) {
       );
     }
 
-    // Set token prototype settings based on target type
     newActorData.prototypeToken = getTokenPrototype(targetType);
 
-    // Create the new actor
     const newActor = await Actor.create(newActorData);
 
     if (newActor) {
@@ -315,7 +288,6 @@ async function convertActor(sourceActor, targetType, newName, conversionData) {
         `Successfully converted ${sourceActor.name} to ${targetType}: ${newActor.name}`
       );
 
-      // Optionally show the new actor sheet
       newActor.sheet.render(true);
     } else {
       ui.notifications.error("Failed to create new actor.");
@@ -326,13 +298,7 @@ async function convertActor(sourceActor, targetType, newName, conversionData) {
   }
 }
 
-/**
- * Convert Character to NPC
- */
 function convertCharacterToNPC(sourceSystem) {
-  // Characters store damage bonuses as uppercase strings (e.g., "D4", "D6")
-  // NPCs need lowercase keys (e.g., "d4", "d6")
-  // Read the actual damage bonuses from the character and convert to lowercase
   const strDmgBonus = convertDamageBonusToKey(
     sourceSystem.damageBonus?.str?.value
   );
@@ -340,7 +306,6 @@ function convertCharacterToNPC(sourceSystem) {
     sourceSystem.damageBonus?.agl?.value
   );
 
-  // Use the character's actual current and max HP/WP values
   const currentHP = sourceSystem.hitPoints?.value || 10;
   const maxHP =
     sourceSystem.hitPoints?.max || sourceSystem.hitPoints?.base || 10;
@@ -353,38 +318,32 @@ function convertCharacterToNPC(sourceSystem) {
     sourceSystem.movement?.value || sourceSystem.movement?.base || 10;
 
   return {
-    // Common fields
     description: sourceSystem.description || "",
     currency: sourceSystem.currency,
     encumbrance: sourceSystem.encumbrance,
 
-    // Copy actual HP values (including current damage)
     hitPoints: {
       value: currentHP,
       base: maxHP,
       max: maxHP,
     },
 
-    // Copy actual WP values (including spent WP)
     willPoints: {
       value: currentWP,
       base: maxWP,
       max: maxWP,
     },
 
-    // Copy movement value
     movement: {
       value: movementValue,
       base: movementValue,
     },
 
-    // Character-base fields (both have these)
     kin: sourceSystem.kin || "",
     age: sourceSystem.age || "adult",
     profession: sourceSystem.profession || "",
     motivation: sourceSystem.motivation || "",
 
-    // Read damage bonuses from character (converted to NPC format)
     damageBonus: {
       agl: {
         base: aglDmgBonus,
@@ -396,28 +355,18 @@ function convertCharacterToNPC(sourceSystem) {
       },
     },
 
-    // NPC-specific fields (initialize as blank)
     traits: "",
-
-    // DROP: attributes (NPCs don't have attributes)
-    // DROP: deathRolls, canRestRound, canRestStretch (character-only)
-    // DROP: appearance, weakness, notes, conditions, maxEncumbrance
   };
 }
 
-/**
- * Convert Character to Monster
- */
 function convertCharacterToMonster(sourceSystem, conversionData) {
   return {
-    // Common fields
     description: sourceSystem.description || "",
     movement: sourceSystem.movement,
     hitPoints: sourceSystem.hitPoints,
     currency: sourceSystem.currency,
     encumbrance: sourceSystem.encumbrance,
 
-    // Monster-specific fields
     armor: conversionData.armor || 0,
     ferocity: {
       base: conversionData.ferocity || 1,
@@ -427,26 +376,19 @@ function convertCharacterToMonster(sourceSystem, conversionData) {
     traits: "",
     attackTable: "",
     previousMonsterAttack: "",
-
-    // DROP: attributes, willPoints, damageBonus, kin, profession, age, etc.
   };
 }
 
-/**
- * Convert NPC to Character
- */
 function convertNPCToCharacter(sourceSystem, conversionData) {
   const attrs = conversionData.attributes;
 
   return {
-    // Common fields
     description: sourceSystem.description || "",
     movement: sourceSystem.movement,
     hitPoints: sourceSystem.hitPoints,
     currency: sourceSystem.currency,
     encumbrance: sourceSystem.encumbrance,
 
-    // Character-base fields (both have these)
     kin: sourceSystem.kin || "",
     age: sourceSystem.age || "adult",
     profession: sourceSystem.profession || "",
@@ -457,8 +399,6 @@ function convertNPCToCharacter(sourceSystem, conversionData) {
       max: attrs.wil,
     },
 
-    // Character-specific fields - using provided attributes
-    // Damage bonus will be auto-calculated by character sheet from attributes
     attributes: {
       str: { base: attrs.str, value: attrs.str },
       con: { base: attrs.con, value: attrs.con },
@@ -477,7 +417,7 @@ function convertNPCToCharacter(sourceSystem, conversionData) {
     },
     appearance: "",
     weakness: "",
-    notes: sourceSystem.traits || "", // Transfer NPC traits to character notes
+    notes: sourceSystem.traits || "",
     deathRolls: {
       successes: 0,
       failures: 0,
@@ -488,54 +428,39 @@ function convertNPCToCharacter(sourceSystem, conversionData) {
       base: Math.ceil(0.5 * attrs.str),
       value: Math.ceil(0.5 * attrs.str),
     },
-
-    // DROP: traits (NPC-only)
-    // DROP: damageBonus (will be auto-calculated)
   };
 }
 
-/**
- * Convert NPC to Monster
- */
 function convertNPCToMonster(sourceSystem, conversionData) {
   return {
-    // Common fields
     description: sourceSystem.description || "",
     movement: sourceSystem.movement,
     hitPoints: sourceSystem.hitPoints,
     currency: sourceSystem.currency,
     encumbrance: sourceSystem.encumbrance,
 
-    // Monster-specific fields
     armor: conversionData.armor || 0,
     ferocity: {
       base: conversionData.ferocity || 1,
       value: conversionData.ferocity || 1,
     },
     size: conversionData.size || "normal",
-    traits: sourceSystem.traits || "", // NPC has traits, transfer it
+    traits: sourceSystem.traits || "",
     attackTable: "",
     previousMonsterAttack: "",
-
-    // DROP: attributes (NPCs don't have attributes), willPoints, damageBonus, kin, profession, age, etc.
   };
 }
 
-/**
- * Convert Monster to Character
- */
 function convertMonsterToCharacter(sourceSystem, conversionData) {
   const attrs = conversionData.attributes;
 
   return {
-    // Common fields
     description: sourceSystem.description || "",
     movement: sourceSystem.movement,
     hitPoints: sourceSystem.hitPoints,
     currency: sourceSystem.currency,
     encumbrance: sourceSystem.encumbrance,
 
-    // Character-base fields (initialize with defaults or converted values)
     kin: "",
     age: "adult",
     profession: "",
@@ -556,7 +481,6 @@ function convertMonsterToCharacter(sourceSystem, conversionData) {
       },
     },
 
-    // Character-specific fields
     attributes: {
       str: { base: attrs.str, value: attrs.str },
       con: { base: attrs.con, value: attrs.con },
@@ -575,7 +499,7 @@ function convertMonsterToCharacter(sourceSystem, conversionData) {
     },
     appearance: "",
     weakness: "",
-    notes: sourceSystem.traits || "", // Transfer traits to notes
+    notes: sourceSystem.traits || "",
     deathRolls: {
       successes: 0,
       failures: 0,
@@ -586,24 +510,17 @@ function convertMonsterToCharacter(sourceSystem, conversionData) {
       base: Math.ceil(0.5 * attrs.str),
       value: Math.ceil(0.5 * attrs.str),
     },
-
-    // DROP: ferocity, armor (monster-specific), attackTable, size
   };
 }
 
-/**
- * Convert Monster to NPC
- */
 function convertMonsterToNPC(sourceSystem, conversionData) {
   return {
-    // Common fields
     description: sourceSystem.description || "",
     movement: sourceSystem.movement,
     hitPoints: sourceSystem.hitPoints,
     currency: sourceSystem.currency,
     encumbrance: sourceSystem.encumbrance,
 
-    // Character-base fields
     kin: "",
     age: "adult",
     profession: "",
@@ -613,7 +530,6 @@ function convertMonsterToNPC(sourceSystem, conversionData) {
       base: conversionData.wil || 10,
       max: conversionData.wil || 10,
     },
-    // Use manually provided damage bonus values
     damageBonus: {
       agl: {
         base: conversionData.damageBonus?.agl || "none",
@@ -625,18 +541,10 @@ function convertMonsterToNPC(sourceSystem, conversionData) {
       },
     },
 
-    // NPC-specific
-    traits: sourceSystem.traits || "", // Transfer monster traits to NPC traits
-
-    // DROP: attributes (NPCs don't have attributes)
-    // DROP: ferocity, armor (monster-specific), attackTable, size
+    traits: sourceSystem.traits || "",
   };
 }
 
-/**
- * Calculate damage bonus string based on attribute value
- * Returns lowercase key (e.g., "d4") for use with NPCs
- */
 function calculateDamageBonus(attributeValue) {
   if (attributeValue <= 9) return "none";
   if (attributeValue <= 12) return "d4";
@@ -644,41 +552,30 @@ function calculateDamageBonus(attributeValue) {
   return "d8";
 }
 
-/**
- * Convert localized damage bonus to lowercase key
- * Handles both localized strings (e.g., "DoD.dice.d4") and already-converted keys (e.g., "d4")
- */
 function convertDamageBonusToKey(damageBonus) {
   if (!damageBonus) return "none";
 
-  // If it's already a lowercase key (none, d4, d6, etc.), return it
   if (damageBonus.match(/^(none|d4|d6|d8|d10|d12|d20)$/i)) {
     return damageBonus.toLowerCase();
   }
 
-  // If it's a localized string like "DoD.dice.d4", extract the die type
   const match = damageBonus.match(/d(\d+)/i);
   if (match) {
     return `d${match[1]}`;
   }
 
-  // Check for "none" in various formats
   if (damageBonus.toLowerCase().includes("none")) {
     return "none";
   }
 
-  // Default fallback
   return "none";
 }
 
-/**
- * Get appropriate token prototype settings for actor type
- */
 function getTokenPrototype(actorType) {
   const baseSettings = {
     name: "",
-    displayName: 20, // Hovered by Owner
-    displayBars: 20, // Hovered by Owner
+    displayName: 20,
+    displayBars: 20,
     bar1: { attribute: "hitPoints" },
   };
 
@@ -687,20 +584,20 @@ function getTokenPrototype(actorType) {
       return {
         ...baseSettings,
         actorLink: true,
-        disposition: 1, // Friendly
+        disposition: 1,
         bar2: { attribute: "willPoints" },
-        displayBars: 30, // Hovered by Anyone
+        displayBars: 30,
         sight: { enabled: true },
       };
     case "npc":
       return {
         ...baseSettings,
-        disposition: 0, // Neutral
+        disposition: 0,
       };
     case "monster":
       return {
         ...baseSettings,
-        disposition: -1, // Hostile
+        disposition: -1,
       };
     default:
       return baseSettings;
