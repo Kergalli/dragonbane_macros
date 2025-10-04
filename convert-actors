@@ -1,0 +1,708 @@
+/**
+ * Dragonbane Actor Type Converter
+ *
+ * This macro allows you to convert between Character, NPC, and Monster actor types.
+ * It will transfer all compatible data fields and all items to the new actor.
+ *
+ * Usage: Select a single actor token, then run this macro.
+ */
+
+(async () => {
+  // Check if a single actor is selected
+  const tokens = canvas.tokens.controlled;
+  if (tokens.length !== 1) {
+    ui.notifications.warn("Please select exactly one token/actor to convert.");
+    return;
+  }
+
+  const actor = tokens[0].actor;
+  if (!actor) {
+    ui.notifications.error("Selected token has no associated actor.");
+    return;
+  }
+
+  const currentType = actor.type;
+  const validTypes = ["character", "npc", "monster"];
+
+  if (!validTypes.includes(currentType)) {
+    ui.notifications.error(
+      `Selected actor type "${currentType}" is not supported for conversion.`
+    );
+    return;
+  }
+
+  // Determine available conversion targets
+  const targetTypes = validTypes.filter((t) => t !== currentType);
+
+  // Build the dialog content
+  let dialogContent = `
+        <form>
+            <div class="form-group">
+                <label><strong>Current Actor Type:</strong> ${
+                  currentType === "npc"
+                    ? "NPC"
+                    : currentType.charAt(0).toUpperCase() + currentType.slice(1)
+                }</label>
+            </div>
+            <div class="form-group">
+                <label><strong>Current Actor Name:</strong> ${
+                  actor.name
+                }</label>
+            </div>
+            <div class="form-group">
+                <label><strong>Convert to:</strong></label>
+                <select name="targetType" id="targetType">
+                    ${targetTypes
+                      .map((t) => {
+                        const displayName =
+                          t === "npc"
+                            ? "NPC"
+                            : t.charAt(0).toUpperCase() + t.slice(1);
+                        return `<option value="${t}">${displayName}</option>`;
+                      })
+                      .join("")}
+                </select>
+            </div>
+            <div class="form-group">
+                <label><strong>New Actor Name:</strong></label>
+                <input type="text" name="newName" value="${
+                  actor.name
+                }" style="width: 100%"/>
+            </div>
+            <div id="conversionFields" style="min-height: 95px;"></div>
+        </form>
+    `;
+
+  // Create the dialog
+  new Dialog(
+    {
+      title: "Convert Actor Type",
+      content: dialogContent,
+      buttons: {
+        convert: {
+          icon: '<i class="fas fa-exchange-alt"></i>',
+          label: "Convert",
+          callback: async (html) => {
+            const targetType = html.find('[name="targetType"]').val();
+            const newName = html.find('[name="newName"]').val();
+
+            // Get conversion-specific values if present
+            let conversionData = {};
+
+            if (targetType === "monster") {
+              const ferocity =
+                parseInt(html.find('[name="ferocity"]').val()) || 1;
+              const size = html.find('[name="size"]').val() || "normal";
+              const armor = parseInt(html.find('[name="armor"]').val()) || 0;
+              conversionData.ferocity = ferocity;
+              conversionData.size = size;
+              conversionData.armor = armor;
+            } else if (currentType === "monster") {
+              if (targetType === "character") {
+                // Converting Monster → Character: get attributes
+                conversionData.attributes = {
+                  str: parseInt(html.find('[name="str"]').val()) || 10,
+                  con: parseInt(html.find('[name="con"]').val()) || 10,
+                  agl: parseInt(html.find('[name="agl"]').val()) || 10,
+                  int: parseInt(html.find('[name="int"]').val()) || 10,
+                  wil: parseInt(html.find('[name="wil"]').val()) || 10,
+                  cha: parseInt(html.find('[name="cha"]').val()) || 10,
+                };
+              } else if (targetType === "npc") {
+                // Converting Monster → NPC: get WIL for WP and damage bonuses
+                conversionData.wil =
+                  parseInt(html.find('[name="wil"]').val()) || 10;
+                conversionData.damageBonus = {
+                  str: html.find('[name="damageBonusStr"]').val() || "none",
+                  agl: html.find('[name="damageBonusAgl"]').val() || "none",
+                };
+              }
+            } else if (currentType === "npc" && targetType === "character") {
+              // Converting NPC → Character: get attributes
+              conversionData.attributes = {
+                str: parseInt(html.find('[name="str"]').val()) || 10,
+                con: parseInt(html.find('[name="con"]').val()) || 10,
+                agl: parseInt(html.find('[name="agl"]').val()) || 10,
+                int: parseInt(html.find('[name="int"]').val()) || 10,
+                wil: parseInt(html.find('[name="wil"]').val()) || 10,
+                cha: parseInt(html.find('[name="cha"]').val()) || 10,
+              };
+            }
+
+            await convertActor(actor, targetType, newName, conversionData);
+          },
+        },
+        cancel: {
+          icon: '<i class="fas fa-times"></i>',
+          label: "Cancel",
+        },
+      },
+      default: "convert",
+      render: (html) => {
+        // Add dynamic fields based on target type selection
+        const updateFields = () => {
+          const targetType = html.find('[name="targetType"]').val();
+          const fieldsDiv = html.find("#conversionFields");
+          fieldsDiv.empty();
+
+          if (targetType === "monster") {
+            fieldsDiv.append(`
+                        <div class="form-group">
+                            <label><strong>Ferocity Value:</strong></label>
+                            <input type="number" name="ferocity" value="1" min="1" style="width: 100%"/>
+                        </div>
+                        <div class="form-group">
+                            <label><strong>Size:</strong></label>
+                            <select name="size" style="width: 100%">
+                                <option value="small">Small</option>
+                                <option value="normal" selected>Normal</option>
+                                <option value="large">Large</option>
+                                <option value="huge">Huge</option>
+                                <option value="swarm">Swarm</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label><strong>Armor Rating:</strong></label>
+                            <input type="number" name="armor" value="0" min="0" style="width: 100%"/>
+                        </div>
+                    `);
+          } else if (currentType === "monster" || currentType === "npc") {
+            // Converting FROM monster or NPC
+            if (targetType === "character") {
+              // Monster/NPC → Character: need all attributes
+              fieldsDiv.append(`
+                            <div class="form-group">
+                                <label><strong>Set Attributes:</strong></label>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px;">
+                                    <div>
+                                        <label style="display: inline-block; width: 40px;">STR:</label>
+                                        <input type="number" name="str" value="10" min="1" max="18" style="width: 50%; text-align: center;"/>
+                                    </div>
+                                    <div>
+                                        <label style="display: inline-block; width: 40px;">CON:</label>
+                                        <input type="number" name="con" value="10" min="1" max="18" style="width: 50%; text-align: center;"/>
+                                    </div>
+                                    <div>
+                                        <label style="display: inline-block; width: 40px;">AGL:</label>
+                                        <input type="number" name="agl" value="10" min="1" max="18" style="width: 50%; text-align: center;"/>
+                                    </div>
+                                    <div>
+                                        <label style="display: inline-block; width: 40px;">INT:</label>
+                                        <input type="number" name="int" value="10" min="1" max="18" style="width: 50%; text-align: center;"/>
+                                    </div>
+                                    <div>
+                                        <label style="display: inline-block; width: 40px;">WIL:</label>
+                                        <input type="number" name="wil" value="10" min="1" max="18" style="width: 50%; text-align: center;"/>
+                                    </div>
+                                    <div>
+                                        <label style="display: inline-block; width: 40px;">CHA:</label>
+                                        <input type="number" name="cha" value="10" min="1" max="18" style="width: 50%; text-align: center;"/>
+                                    </div>
+                                </div>
+                            </div>
+                        `);
+            } else if (targetType === "npc") {
+              // Monster → NPC: need WIL for WP and damage bonuses
+              fieldsDiv.append(`
+                            <div class="form-group">
+                                <label><strong>Set Willpower:</strong></label>
+                                <input type="number" name="wil" value="10" min="1" max="18" style="width: 100%"/>
+                            </div>
+                            <div class="form-group">
+                                <label><strong>Damage Bonus (STR):</strong></label>
+                                <select name="damageBonusStr" style="width: 100%">
+                                    <option value="none" selected>None</option>
+                                    <option value="d4">D4</option>
+                                    <option value="d6">D6</option>
+                                    <option value="d8">D8</option>
+                                    <option value="d10">D10</option>
+                                    <option value="d12">D12</option>
+                                    <option value="d20">D20</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label><strong>Damage Bonus (AGL):</strong></label>
+                                <select name="damageBonusAgl" style="width: 100%">
+                                    <option value="none" selected>None</option>
+                                    <option value="d4">D4</option>
+                                    <option value="d6">D6</option>
+                                    <option value="d8">D8</option>
+                                    <option value="d10">D10</option>
+                                    <option value="d12">D12</option>
+                                    <option value="d20">D20</option>
+                                </select>
+                            </div>
+                        `);
+            }
+          }
+        };
+
+        html.find('[name="targetType"]').on("change", updateFields);
+        updateFields(); // Initial call
+      },
+    },
+    {
+      width: 400,
+      height: 300,
+    }
+  ).render(true);
+})();
+
+/**
+ * Convert an actor from one type to another
+ */
+async function convertActor(sourceActor, targetType, newName, conversionData) {
+  try {
+    ui.notifications.info(`Converting ${sourceActor.name} to ${targetType}...`);
+
+    // Get source actor data
+    const sourceData = sourceActor.toObject();
+    const sourceType = sourceActor.type;
+
+    // IMPORTANT: Use the actor's actual system data for HP/WP, not toObject()
+    // toObject() recalculates HP/WP from attributes, which gives wrong values
+    const sourceSystem = sourceActor.system;
+
+    // Prepare new actor data structure
+    let newActorData = {
+      name: newName,
+      type: targetType,
+      img: sourceData.img,
+      system: {},
+      items: sourceData.items, // Transfer all items
+      effects: sourceData.effects, // Transfer all active effects
+    };
+
+    // Convert based on source and target types
+    // Use sourceSystem (from actor.system) instead of sourceData.system for correct HP/WP
+    if (sourceType === "character" && targetType === "npc") {
+      newActorData.system = convertCharacterToNPC(sourceSystem);
+    } else if (sourceType === "character" && targetType === "monster") {
+      newActorData.system = convertCharacterToMonster(
+        sourceSystem,
+        conversionData
+      );
+    } else if (sourceType === "npc" && targetType === "character") {
+      newActorData.system = convertNPCToCharacter(
+        sourceData.system,
+        conversionData
+      );
+    } else if (sourceType === "npc" && targetType === "monster") {
+      newActorData.system = convertNPCToMonster(
+        sourceData.system,
+        conversionData
+      );
+    } else if (sourceType === "monster" && targetType === "character") {
+      newActorData.system = convertMonsterToCharacter(
+        sourceData.system,
+        conversionData
+      );
+    } else if (sourceType === "monster" && targetType === "npc") {
+      newActorData.system = convertMonsterToNPC(
+        sourceData.system,
+        conversionData
+      );
+    }
+
+    // Set token prototype settings based on target type
+    newActorData.prototypeToken = getTokenPrototype(targetType);
+
+    // Create the new actor
+    const newActor = await Actor.create(newActorData);
+
+    if (newActor) {
+      ui.notifications.success(
+        `Successfully converted ${sourceActor.name} to ${targetType}: ${newActor.name}`
+      );
+
+      // Optionally show the new actor sheet
+      newActor.sheet.render(true);
+    } else {
+      ui.notifications.error("Failed to create new actor.");
+    }
+  } catch (error) {
+    console.error("Actor conversion error:", error);
+    ui.notifications.error(`Conversion failed: ${error.message}`);
+  }
+}
+
+/**
+ * Convert Character to NPC
+ */
+function convertCharacterToNPC(sourceSystem) {
+  // Characters store damage bonuses as uppercase strings (e.g., "D4", "D6")
+  // NPCs need lowercase keys (e.g., "d4", "d6")
+  // Read the actual damage bonuses from the character and convert to lowercase
+  const strDmgBonus = convertDamageBonusToKey(
+    sourceSystem.damageBonus?.str?.value
+  );
+  const aglDmgBonus = convertDamageBonusToKey(
+    sourceSystem.damageBonus?.agl?.value
+  );
+
+  // Use the character's actual current and max HP/WP values
+  const currentHP = sourceSystem.hitPoints?.value || 10;
+  const maxHP =
+    sourceSystem.hitPoints?.max || sourceSystem.hitPoints?.base || 10;
+
+  const currentWP = sourceSystem.willPoints?.value || 10;
+  const maxWP =
+    sourceSystem.willPoints?.max || sourceSystem.willPoints?.base || 10;
+
+  const movementValue =
+    sourceSystem.movement?.value || sourceSystem.movement?.base || 10;
+
+  return {
+    // Common fields
+    description: sourceSystem.description || "",
+    currency: sourceSystem.currency,
+    encumbrance: sourceSystem.encumbrance,
+
+    // Copy actual HP values (including current damage)
+    hitPoints: {
+      value: currentHP,
+      base: maxHP,
+      max: maxHP,
+    },
+
+    // Copy actual WP values (including spent WP)
+    willPoints: {
+      value: currentWP,
+      base: maxWP,
+      max: maxWP,
+    },
+
+    // Copy movement value
+    movement: {
+      value: movementValue,
+      base: movementValue,
+    },
+
+    // Character-base fields (both have these)
+    kin: sourceSystem.kin || "",
+    age: sourceSystem.age || "adult",
+    profession: sourceSystem.profession || "",
+    motivation: sourceSystem.motivation || "",
+
+    // Read damage bonuses from character (converted to NPC format)
+    damageBonus: {
+      agl: {
+        base: aglDmgBonus,
+        value: aglDmgBonus,
+      },
+      str: {
+        base: strDmgBonus,
+        value: strDmgBonus,
+      },
+    },
+
+    // NPC-specific fields (initialize as blank)
+    traits: "",
+
+    // DROP: attributes (NPCs don't have attributes)
+    // DROP: deathRolls, canRestRound, canRestStretch (character-only)
+    // DROP: appearance, weakness, notes, conditions, maxEncumbrance
+  };
+}
+
+/**
+ * Convert Character to Monster
+ */
+function convertCharacterToMonster(sourceSystem, conversionData) {
+  return {
+    // Common fields
+    description: sourceSystem.description || "",
+    movement: sourceSystem.movement,
+    hitPoints: sourceSystem.hitPoints,
+    currency: sourceSystem.currency,
+    encumbrance: sourceSystem.encumbrance,
+
+    // Monster-specific fields
+    armor: conversionData.armor || 0,
+    ferocity: {
+      base: conversionData.ferocity || 1,
+      value: conversionData.ferocity || 1,
+    },
+    size: conversionData.size || "normal",
+    traits: "",
+    attackTable: "",
+    previousMonsterAttack: "",
+
+    // DROP: attributes, willPoints, damageBonus, kin, profession, age, etc.
+  };
+}
+
+/**
+ * Convert NPC to Character
+ */
+function convertNPCToCharacter(sourceSystem, conversionData) {
+  const attrs = conversionData.attributes;
+
+  return {
+    // Common fields
+    description: sourceSystem.description || "",
+    movement: sourceSystem.movement,
+    hitPoints: sourceSystem.hitPoints,
+    currency: sourceSystem.currency,
+    encumbrance: sourceSystem.encumbrance,
+
+    // Character-base fields (both have these)
+    kin: sourceSystem.kin || "",
+    age: sourceSystem.age || "adult",
+    profession: sourceSystem.profession || "",
+    motivation: sourceSystem.motivation || "",
+    willPoints: {
+      value: attrs.wil,
+      base: attrs.wil,
+      max: attrs.wil,
+    },
+
+    // Character-specific fields - using provided attributes
+    // Damage bonus will be auto-calculated by character sheet from attributes
+    attributes: {
+      str: { base: attrs.str, value: attrs.str },
+      con: { base: attrs.con, value: attrs.con },
+      agl: { base: attrs.agl, value: attrs.agl },
+      int: { base: attrs.int, value: attrs.int },
+      wil: { base: attrs.wil, value: attrs.wil },
+      cha: { base: attrs.cha, value: attrs.cha },
+    },
+    conditions: {
+      str: { value: false },
+      con: { value: false },
+      agl: { value: false },
+      int: { value: false },
+      wil: { value: false },
+      cha: { value: false },
+    },
+    appearance: "",
+    weakness: "",
+    notes: sourceSystem.traits || "", // Transfer NPC traits to character notes
+    deathRolls: {
+      successes: 0,
+      failures: 0,
+    },
+    canRestRound: true,
+    canRestStretch: true,
+    maxEncumbrance: {
+      base: Math.ceil(0.5 * attrs.str),
+      value: Math.ceil(0.5 * attrs.str),
+    },
+
+    // DROP: traits (NPC-only)
+    // DROP: damageBonus (will be auto-calculated)
+  };
+}
+
+/**
+ * Convert NPC to Monster
+ */
+function convertNPCToMonster(sourceSystem, conversionData) {
+  return {
+    // Common fields
+    description: sourceSystem.description || "",
+    movement: sourceSystem.movement,
+    hitPoints: sourceSystem.hitPoints,
+    currency: sourceSystem.currency,
+    encumbrance: sourceSystem.encumbrance,
+
+    // Monster-specific fields
+    armor: conversionData.armor || 0,
+    ferocity: {
+      base: conversionData.ferocity || 1,
+      value: conversionData.ferocity || 1,
+    },
+    size: conversionData.size || "normal",
+    traits: sourceSystem.traits || "", // NPC has traits, transfer it
+    attackTable: "",
+    previousMonsterAttack: "",
+
+    // DROP: attributes (NPCs don't have attributes), willPoints, damageBonus, kin, profession, age, etc.
+  };
+}
+
+/**
+ * Convert Monster to Character
+ */
+function convertMonsterToCharacter(sourceSystem, conversionData) {
+  const attrs = conversionData.attributes;
+
+  return {
+    // Common fields
+    description: sourceSystem.description || "",
+    movement: sourceSystem.movement,
+    hitPoints: sourceSystem.hitPoints,
+    currency: sourceSystem.currency,
+    encumbrance: sourceSystem.encumbrance,
+
+    // Character-base fields (initialize with defaults or converted values)
+    kin: "",
+    age: "adult",
+    profession: "",
+    motivation: "",
+    willPoints: {
+      value: attrs.wil,
+      base: attrs.wil,
+      max: attrs.wil,
+    },
+    damageBonus: {
+      agl: {
+        base: calculateDamageBonus(attrs.agl),
+        value: calculateDamageBonus(attrs.agl),
+      },
+      str: {
+        base: calculateDamageBonus(attrs.str),
+        value: calculateDamageBonus(attrs.str),
+      },
+    },
+
+    // Character-specific fields
+    attributes: {
+      str: { base: attrs.str, value: attrs.str },
+      con: { base: attrs.con, value: attrs.con },
+      agl: { base: attrs.agl, value: attrs.agl },
+      int: { base: attrs.int, value: attrs.int },
+      wil: { base: attrs.wil, value: attrs.wil },
+      cha: { base: attrs.cha, value: attrs.cha },
+    },
+    conditions: {
+      str: { value: false },
+      con: { value: false },
+      agl: { value: false },
+      int: { value: false },
+      wil: { value: false },
+      cha: { value: false },
+    },
+    appearance: "",
+    weakness: "",
+    notes: sourceSystem.traits || "", // Transfer traits to notes
+    deathRolls: {
+      successes: 0,
+      failures: 0,
+    },
+    canRestRound: true,
+    canRestStretch: true,
+    maxEncumbrance: {
+      base: Math.ceil(0.5 * attrs.str),
+      value: Math.ceil(0.5 * attrs.str),
+    },
+
+    // DROP: ferocity, armor (monster-specific), attackTable, size
+  };
+}
+
+/**
+ * Convert Monster to NPC
+ */
+function convertMonsterToNPC(sourceSystem, conversionData) {
+  return {
+    // Common fields
+    description: sourceSystem.description || "",
+    movement: sourceSystem.movement,
+    hitPoints: sourceSystem.hitPoints,
+    currency: sourceSystem.currency,
+    encumbrance: sourceSystem.encumbrance,
+
+    // Character-base fields
+    kin: "",
+    age: "adult",
+    profession: "",
+    motivation: "",
+    willPoints: {
+      value: conversionData.wil || 10,
+      base: conversionData.wil || 10,
+      max: conversionData.wil || 10,
+    },
+    // Use manually provided damage bonus values
+    damageBonus: {
+      agl: {
+        base: conversionData.damageBonus?.agl || "none",
+        value: conversionData.damageBonus?.agl || "none",
+      },
+      str: {
+        base: conversionData.damageBonus?.str || "none",
+        value: conversionData.damageBonus?.str || "none",
+      },
+    },
+
+    // NPC-specific
+    traits: sourceSystem.traits || "", // Transfer monster traits to NPC traits
+
+    // DROP: attributes (NPCs don't have attributes)
+    // DROP: ferocity, armor (monster-specific), attackTable, size
+  };
+}
+
+/**
+ * Calculate damage bonus string based on attribute value
+ * Returns lowercase key (e.g., "d4") for use with NPCs
+ */
+function calculateDamageBonus(attributeValue) {
+  if (attributeValue <= 9) return "none";
+  if (attributeValue <= 12) return "d4";
+  if (attributeValue <= 16) return "d6";
+  return "d8";
+}
+
+/**
+ * Convert localized damage bonus to lowercase key
+ * Handles both localized strings (e.g., "DoD.dice.d4") and already-converted keys (e.g., "d4")
+ */
+function convertDamageBonusToKey(damageBonus) {
+  if (!damageBonus) return "none";
+
+  // If it's already a lowercase key (none, d4, d6, etc.), return it
+  if (damageBonus.match(/^(none|d4|d6|d8|d10|d12|d20)$/i)) {
+    return damageBonus.toLowerCase();
+  }
+
+  // If it's a localized string like "DoD.dice.d4", extract the die type
+  const match = damageBonus.match(/d(\d+)/i);
+  if (match) {
+    return `d${match[1]}`;
+  }
+
+  // Check for "none" in various formats
+  if (damageBonus.toLowerCase().includes("none")) {
+    return "none";
+  }
+
+  // Default fallback
+  return "none";
+}
+
+/**
+ * Get appropriate token prototype settings for actor type
+ */
+function getTokenPrototype(actorType) {
+  const baseSettings = {
+    name: "",
+    displayName: 20, // Hovered by Owner
+    displayBars: 20, // Hovered by Owner
+    bar1: { attribute: "hitPoints" },
+  };
+
+  switch (actorType) {
+    case "character":
+      return {
+        ...baseSettings,
+        actorLink: true,
+        disposition: 1, // Friendly
+        bar2: { attribute: "willPoints" },
+        displayBars: 30, // Hovered by Anyone
+        sight: { enabled: true },
+      };
+    case "npc":
+      return {
+        ...baseSettings,
+        disposition: 0, // Neutral
+      };
+    case "monster":
+      return {
+        ...baseSettings,
+        disposition: -1, // Hostile
+      };
+    default:
+      return baseSettings;
+  }
+}
