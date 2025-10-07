@@ -4,7 +4,7 @@
 // Replace the actor UUIDs in the code with the UUIDs for the appropriate elementals and power levels.
 // Give the caster's player Limited ownership of the macro and Owner ownership of the elementals (create copies in a Summons folder if you want to keep them separated).
 // Make sure the caster's summon spells have "n/a" in the damage fields so Automated Animations will trigger.
-/// Create an Automated Animation entry for the spell name (On Token is fine). Give it an animation and sound, and then add the macro to the AA entry (When to Play: Concurrent with Animation is usually fine).
+// Create an Automated Animation entry for the spell name (On Token is fine). Give it an animation and sound, and then add the macro to the AA entry (When to Play: Concurrent with Animation is usually fine).
 
 const CREATURE_UUIDS = {
   1: "Actor.uxwdYZxZewJNYSJj", // Elemental Power Level 1 UUID
