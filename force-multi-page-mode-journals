@@ -1,0 +1,7 @@
+// Hook into journal rendering to force multi-page mode
+// Run at world load or via world script loader
+Hooks.on("renderJournalEntrySheet", (sheet, html) => {
+  if (sheet.mode !== 2) {
+    sheet.render(true, { mode: 2 });
+  }
+});
