@@ -1,0 +1,60 @@
+Advanced Drawing Tools v3.0.0
+Automated Animations v6.4.3
+Bithir's Dragonbane mods v1.9.1
+Card Viewer v0.4.1
+Carousel Combat Tracker v4.0.3
+Cleaner sheet title bar v1.5.5
+Combat Booster: Turn Marker, Recent Actions and more v5.0.1
+DF Settings Clarity v4.0.0
+DFreds Droppables v5.2.1
+Dice So Nice! v5.2.4
+Dice Tray v3.5.3
+Door Sounds v13.002
+Dragonbane - Item Browser v1.3.1
+Dragonbane Combat Assistant v2.0.4
+Dragonbane Status Effects v2.0.3
+Easy Target v4.0
+Easy Timekeeping v1.3.1
+Foundry Summons v2.4.0 (only needed for Summon Elemental macro)
+GM Screen v5.3.2
+Grid Scaler v1.5.0
+Health Estimate v34.3.5
+Hover Distance v5.0.1 (Pateron - TheRipper93)
+Image Context v3.1.3 (Pateron - TheRipper93)
+Item Piles v3.2.27
+Item Piles: Dragonbane / Drakar och Demoner v1.0.5
+JB2A - Patreon Complete Collection v0.8.1 (Pateron - JB2A)
+lib - Color Settings v3.0.4
+libWrapper v1.13.4.0
+Lock View v2.0.1
+Media Optimizer v5.0.3 (Pateron - TheRipper93)
+Monk's Active Tile Triggers v13.05
+Monk's Combat Details v13.05
+Monk's Little Details v13.02
+Monk's Scene Navigation v13.02
+Nore's Interface Enhancements v3.0.0
+Ownership Viewer v13.2
+Party Overview v2.14
+PDF Pager v13.0.3
+PopOut! v2.21
+PSFX-Patreon v0.5.6  (Pateron - PSFX)
+Random Target v4.6.3
+Recycle Bin v3.0.2 (Pateron - TheRipper93)
+Roll Mode Keybindings v1.0.1 (my custom update)
+Sequencer v3.6.10
+Show Art v100.1.3.0 (my custom update)
+Smart Doors v1.7.1
+socketlib vv1.1.3
+SoundFx Library v1.0.3
+Splatter v5.0.1
+Sticky Notes v1.4.0
+Token Action HUD Core v2.0.16
+Token Action HUD Dragonbane v2.2.0
+Tokenizer v4.5.6
+Torch v3.1.0
+Transient Compendium Actor Library v1.0.2 (only needed for Summon Elemental macro)
+Visual Active Effects v13.0.5 (Dfred's Effects Panel is another good alternative)
+Year Zero Engine: ⚔️ Combat v1.5.0
+
+Installed, but not required to be active:
+Game-icons.net v0.0.39
