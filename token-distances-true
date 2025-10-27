@@ -1,10 +1,7 @@
-// Token Distances - True Distance
-const RANGE_METERS = 4;
-
 // Get origin token
 const originToken = canvas.tokens.controlled[0];
 if (!originToken) {
-    ui.notifications.warn("Please select a token to center the AoE.");
+    ui.notifications.warn("Please select a token to measure distance fromE.");
     return;
 }
 
@@ -14,7 +11,6 @@ const tokensInRange = canvas.tokens.placeables.filter(token => {
 
     const dist = canvas.grid.measureDistance(originToken.center, token.center);
     console.log(`${token.name} is ${dist.toFixed(2)}m from ${originToken.name}`);
-    return dist <= RANGE_METERS;
 });
 
 // Notify user
