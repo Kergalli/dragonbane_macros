@@ -1,0 +1,228 @@
+// Custom WP Damage for the Dragonbane RPG
+
+// Move constants to module scope for optimization
+const DICE_TYPES = Object.freeze(["d4", "d6", "d8", "d10", "d12", "d20"]);
+
+// Check for selected tokens
+const selectedTokens = canvas.tokens.controlled;
+if (selectedTokens.length === 0) {
+    ui.notifications.warn("Please select a token before using this macro.");
+    return;
+}
+
+if (selectedTokens.length > 1) {
+    ui.notifications.warn("Please select only one token.");
+    return;
+}
+
+// Get the selected token and its actor
+const selectedToken = selectedTokens[0];
+const targetActor = selectedToken.actor;
+
+// Optimized HTML generation using template literals
+const numDiceOptions = Array.from({ length: 10 }, (_, i) =>
+    `<option value="${i + 1}">${i + 1}</option>`
+).join('');
+
+const diceTypeOptions = DICE_TYPES.map(type =>
+    `<option value="${type}">${type}</option>`
+).join('');
+
+const content = `
+<div class="gm-wp-info">
+  <p><strong>Selected:</strong> ${targetActor.name}</p>
+</div>
+<div class="gm-wp-form">
+  <div class="form-group">
+    <label for="num-dice">Number of Dice:</label>
+    <select id="num-dice" name="num-dice">
+      ${numDiceOptions}
+    </select>
+  </div>
+  <div class="form-group">
+    <label for="dice-type">Select Dice Type:</label>
+    <select id="dice-type" name="dice-type">
+      ${diceTypeOptions}
+    </select>
+  </div>
+  <div class="form-group">
+    <label for="dmg-mod">Damage Modifier:</label>
+    <input type="number" id="dmg-mod" name="dmg-mod" value="0" />
+  </div>
+</div>
+<div class="gm-wp-buttons">
+  <button type="button" class="gm-roll-btn">
+    <i class="fas fa-dice"></i> Roll WP Damage
+  </button>
+  <button type="button" class="gm-cancel-btn">
+    <i class="fas fa-times"></i> Cancel
+  </button>
+</div>
+`;
+
+// Create dialog
+const dialog = new Dialog({
+    title: "🎲 Custom WP Damage Roll",
+    content: content,
+    buttons: {}, // No automatic buttons
+    default: "",
+    close: () => {
+        // Clean up dynamically added styles
+        if (dialog._styleElement) {
+            document.head.removeChild(dialog._styleElement);
+            dialog._styleElement = null;
+        }
+    },
+    render: (html) => {
+        // Add CSS styles to head
+        const style = document.createElement('style');
+        style.textContent = `
+      .gm-wp-info {
+        margin-bottom: 15px;
+        padding: 10px;
+        background: rgba(0, 96, 77, 0.1);
+        border: 1px solid #00604d;
+        border-radius: 6px;
+        text-align: center;
+      }
+      
+      .gm-wp-form {
+        margin-bottom: 15px;
+        padding: 15px;
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 6px;
+      }
+      
+      .form-group {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+      }
+      
+      .form-group:last-child {
+        margin-bottom: 0;
+      }
+      
+      .form-group label {
+        text-align: left;
+        width: 60%;
+        font-weight: bold;
+      }
+      
+      .form-group input,
+      .form-group select {
+        width: 35%;
+        padding: 5px;
+        height: 30px;
+        border: 2px solid #00604d;
+        border-radius: 4px;
+        background: white;
+        text-align: center;
+      }
+      
+      .gm-wp-buttons {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+      }
+      
+      .gm-roll-btn {
+        background-image: url('Dragonbane-Images/button-bg.webp');
+        background-size: cover;
+        background-position: center;
+        color: white;
+        border: 2px solid #00604d;
+        border-radius: 8px;
+        padding: 7px 5px;
+        font-size: 0.9em;
+        font-weight: normal;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        transition: all 0.2s ease;
+        cursor: pointer;
+      }
+      
+      .gm-roll-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4);
+        filter: brightness(1.1);
+      }
+      
+      .gm-cancel-btn {
+        background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+        color: white;
+        border: 2px solid #a71e2a;
+        border-radius: 8px;
+        padding: 7px 5px;
+        font-size: 0.9em;
+        font-weight: normal;
+        box-shadow: 0 4px 6px rgba(220, 53, 69, 0.3);
+        transition: all 0.2s ease;
+        cursor: pointer;
+      }
+      
+      .gm-cancel-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 12px rgba(220, 53, 69, 0.5);
+        background: linear-gradient(135deg, #e74c3c 0%, #dc3545 100%);
+      }
+    `;
+
+        document.head.appendChild(style);
+        dialog._styleElement = style; // Store reference for cleanup
+
+        // Add click handler for roll button with optimized form handling
+        html.find('.gm-roll-btn').on('click', async function () {
+            try {
+                // Cache form elements to avoid repeated jQuery queries
+                const form = {
+                    numDice: html.find('#num-dice').val(),
+                    diceType: html.find('#dice-type').val(),
+                    dmgMod: parseInt(html.find('#dmg-mod').val()) || 0
+                };
+
+                // Build damage formula more efficiently
+                const damage = form.dmgMod === 0
+                    ? `${form.numDice}${form.diceType}`
+                    : `${form.numDice}${form.diceType}${form.dmgMod > 0 ? '+' : ''}${form.dmgMod}`;
+
+                const roll = await new Roll(damage).evaluate();
+                const wpDamage = roll.total;
+
+                const flavor = `<b>${targetActor.name}</b> suffers <b>${wpDamage}</b> points <b>Willpower Damage</b> (you must manually apply).`;
+                const messageData = {
+                    user: game.user.id,
+                    speaker: ChatMessage.getSpeaker({ actor: targetActor }),
+                    flavor: flavor,
+                    content: `
+            <div class="dice-roll">
+              <div class="dice-result">
+                <div class="dice-formula">${damage}</div>
+                <div class="dice-tooltip">
+                  ${await roll.getTooltip()}
+                </div>
+                <h4 class="dice-total">${wpDamage} Willpower</h4>
+              </div>
+            </div>
+          `
+                };
+
+                await roll.toMessage(messageData);
+                dialog.close();
+
+            } catch (error) {
+                console.error("Error rolling WP damage:", error);
+                ui.notifications.error(`Failed to roll WP damage: ${error.message}`);
+            }
+        });
+
+        // Add click handler for cancel button
+        html.find('.gm-cancel-btn').on('click', () => dialog.close());
+    }
+}, {
+    width: 350,
+    height: 330,
+    classes: ["gm-wp-damage-panel"]
+});
+
+dialog.render(true);
