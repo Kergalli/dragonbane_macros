@@ -9,7 +9,7 @@
 const CREATURE_UUIDS = {
   1: "Actor.uxwdYZxZewJNYSJj", // Elemental Power Level 1 UUID
   2: "Actor.lMHpFrQjAWqx3dIT",  // Elemental Power Level 2 UUID
-  3: "Actor.CcOA6lwVZuW64nCr" / / Elemental Power Level 3 UUID
+  3: "Actor.CcOA6lwVZuW64nCr" // Elemental Power Level 3 UUID
 };
 
 // Get power level of spell
