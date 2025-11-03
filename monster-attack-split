@@ -1,0 +1,108 @@
+// Monster Attack Roller (Selected Token)
+// Whispers full result to GM, posts attack name to all players
+
+(async () => {
+  try {
+    // Get selected token
+    const token = canvas.tokens.controlled[0];
+    if (!token) {
+      ui.notifications.warn("Please select a monster token first!");
+      return;
+    }
+
+    const actor = token.actor;
+    if (!actor) {
+      ui.notifications.warn("Selected token has no actor!");
+      return;
+    }
+
+    // Check if monster has an attack table
+    const attackTableUuid = actor.system.attackTable;
+    if (!attackTableUuid) {
+      ui.notifications.warn(`${actor.name} has no attack table assigned!`);
+      return;
+    }
+
+    // Load the attack table
+    const attackTable = await fromUuid(attackTableUuid);
+    if (!attackTable || !attackTable.results || attackTable.results.size === 0) {
+      ui.notifications.warn(`Invalid attack table for ${actor.name}!`);
+      return;
+    }
+
+    // Use the actor's system method to draw from the table
+    const draw = await actor.drawMonsterAttack(attackTable);
+    const tableResult = draw.results[0];
+    const roll = draw.roll;
+
+    // Get description based on Foundry version
+    let attackDescription = "";
+    if (game.release.generation >= 13) {
+      attackDescription = tableResult.description || tableResult.text || "";
+    } else {
+      attackDescription = tableResult.text || "";
+    }
+
+    // Default attack name
+    let attackName = `Attack ${tableResult.range[0]}`;
+
+    // Parse the attack name from bold tags in description (same as Token Action HUD)
+    const match = attackDescription.match(/<(b|strong)>(.*?)<\/\1>/);
+    if (match) {
+      attackName = match[2];
+      // Remove the bold tag from description for clean display
+      attackDescription = attackDescription
+        .replace(/<(b|strong)>.*?<\/\1>/, "")
+        .trim();
+    }
+
+    // Get the GM user
+    const gm = game.users.find(u => u.isGM);
+    if (!gm) {
+      ui.notifications.warn("No GM found to whisper to!");
+      return;
+    }
+
+    // Create GM whisper with full content
+    const gmContent = `
+      <div class="dice-roll" data-action="expandRoll">
+        <div class="dice-result">
+          <div class="dice-formula">${attackTable.name || "Monster Attack Table"}</div>
+          <h4 class="dice-total">${attackName}</h4>
+        </div>
+      </div>
+      ${attackDescription ? `<div class="dice-description" style="margin-top: 0.5em;"><strong>Full Description:</strong><br/>${attackDescription}</div>` : ''}
+    `;
+
+    await ChatMessage.create({
+      author: game.user.id,
+      speaker: ChatMessage.getSpeaker({ token: token.document }),
+      content: gmContent,
+      whisper: [gm.id],
+      rolls: roll ? [roll] : []
+    });
+
+    // Create public message with only attack name
+    const publicContent = `
+      <div class="dice-roll" data-action="expandRoll">
+        <div class="dice-result">
+          <div class="dice-formula">${attackTable.name || "Monster Attack Table"}</div>
+          <h4 class="dice-total">${attackName}</h4>
+        </div>
+      </div>
+    `;
+
+    await ChatMessage.create({
+      author: game.user.id,
+      speaker: ChatMessage.getSpeaker({ token: token.document }),
+      content: publicContent,
+      rolls: roll ? [roll] : []
+    });
+
+    ui.notifications.info(`${actor.name} uses ${attackName}!`);
+
+  } catch (error) {
+    console.error("Error rolling monster attack:", error);
+    ui.notifications.error("Failed to roll monster attack");
+  }
+})();
