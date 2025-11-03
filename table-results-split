@@ -1,0 +1,79 @@
+// Rolls on the table, whispers full result to GM, posts first sentence to all players
+
+(async () => {
+  try {
+    // Find the table
+    const table = game.tables.contents.find(
+      (tbl) => tbl.name === "Mishap - Journey" // replace table name here
+    );
+
+    if (!table) {
+      ui.notifications.warn("Table not found!");
+      return;
+    }
+
+    // Roll on the table (without displaying default chat)
+    const draw = await table.draw({ displayChat: false });
+    const tableResult = draw.results[0];
+    const roll = draw.roll;
+
+    // Get description based on Foundry version
+    let fullDescription = "";
+    if (game.release.generation >= 13) {
+      fullDescription = tableResult.description || tableResult.text || "";
+    } else {
+      fullDescription = tableResult.text || "";
+    }
+
+    // Extract first sentence (everything up to first period)
+    const firstSentenceMatch = fullDescription.match(/^[^.]+/);
+    const firstSentence = firstSentenceMatch ? firstSentenceMatch[0].trim() : fullDescription;
+
+    // Get the GM user
+    const gm = game.users.find(u => u.isGM);
+
+    // Create GM whisper with full content
+    const gmContent = `
+      <div class="dice-roll" data-action="expandRoll">
+        <div class="dice-result">
+          <div class="dice-formula">${table.name}</div>
+          <h4 class="dice-total">${roll.total}</h4>
+        </div>
+      </div>
+      <div class="dice-description" style="margin-top: 0.5em;">
+        ${fullDescription}
+      </div>
+    `;
+
+    await ChatMessage.create({
+      author: game.user.id,
+      content: gmContent,
+      whisper: [gm.id],
+      rolls: [roll]
+    });
+
+    // Create public message with only first sentence
+    const publicContent = `
+      <div class="dice-roll" data-action="expandRoll">
+        <div class="dice-result">
+          <div class="dice-formula">${table.name}</div>
+        </div>
+      </div>
+      <div class="dice-description" style="margin-top: 0.5em;">
+        ${firstSentence}
+      </div>
+    `;
+
+    await ChatMessage.create({
+      author: game.user.id,
+      content: publicContent,
+      rolls: [roll]
+    });
+
+    ui.notifications.info(`Rolled on ${table.name}`);
+
+  } catch (error) {
+    console.error("Error rolling on Table:", error);
+    ui.notifications.error("Failed to roll on table");
+  }
+})();
