@@ -44,7 +44,7 @@
     }
 
     // Default attack name
-    let attackName = `Attack ${tableResult.range[0]}`;
+    let attackName = tableResult.name || `Attack ${tableResult.range[0]}`;
 
     // Parse the attack name from bold tags in description (same as Token Action HUD)
     const match = attackDescription.match(/<(b|strong)>(.*?)<\/\1>/);
