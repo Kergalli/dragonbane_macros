@@ -23,3 +23,11 @@ A collection of macros and utilities for the Dragonbane RPG system in Foundry VT
 **actor-edit-for-inner-peace.js** - System file replacement code for fixing the Inner Peace kin ability in the stretch rest function.
 
 **status-effect-descriptions** - JSON configuration file containing descriptions and references for all Dragonbane status effects. For use with Dragonbane Status Effects.
+
+## License & Disclaimer
+
+MIT License. 
+
+These macros are not affiliated with, sponsored, or endorsed by Fria Ligan AB. This Supplement was created under Fria Ligan AB’s [Dragonbane Third Party Supplement License](https://freeleaguepublishing.com/wp-content/uploads/2023/11/Dragonbane-License-Agreement.pdf).
+
+![A Supplement For Dragonbane](https://raw.githubusercontent.com/Kergalli/dragonbane_macros/refs/heads/main/dragonbane-license-logo-red.png)
