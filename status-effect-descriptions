@@ -1,7 +1,7 @@
 {
   "module": "dragonbane-status-effects",
   "version": "2.0.8",
-  "timestamp": "2026-01-03T06:14:11.060Z",
+  "timestamp": "2026-01-03T06:56:59.422Z",
   "descriptions": {
     "dse-amnesia": "You cannot remember who you or the other player characters are. The effect must be roleplayed.<br><br>@UUID[Item.QnMQRawhnIwakJlM]{Amnesia}",
     "blind": "You cannot see and automatically fail skill checks that require sight. Attacks and other actions requiring vision suffer severe penalties at the GM's discretion.",
@@ -44,6 +44,12 @@
     "dse-disguised": "You assume another person’s looks, voice, and demeanor. The person must be of the same kin as you. Anyone who knows the person and sees you from up to 10 meters away can make an AWARENESS roll to see through your disguise.<br><br>@UUID[Item.HYdoynYpCFOFb2pd]{Disguise}",
     "dse-musician-bane": "All enemies within 10 meters receive a bane to all rolls. The effect lasts until your turn in the next round.<br><br>@UUID[Item.XrI4QOgJ2DJmhQEP]{Musician}",
     "dse-musician-boon": "All allies within 10 meters receive a boon to all rolls. The effect lasts until your turn in the next round.<br><br>@UUID[Item.XrI4QOgJ2DJmhQEP]{Musician (Boon)}",
-    "dse-wolfkin-prey": "You can follow the scent of your prey for a full day, and you can spend 1 further WP (not an action) to gain a boon for an attack against your prey.<br><br>@UUID[Item.DJ2PLZmv5XMUvDIC]{Hunting Instincts}"
+    "dse-wolfkin-prey": "You can follow the scent of your prey for a full day, and you can spend 1 further WP (not an action) to gain a boon for an attack against your prey.<br><br>@UUID[Item.DJ2PLZmv5XMUvDIC]{Hunting Instincts}",
+    "dragonbane.condition.angry": "You receive a bane on all rolls against INT and skill rolls based on INT.",
+    "dragonbane.condition.dazed": "You receive a bane on all rolls against AGL and skill rolls based on AGL.",
+    "dragonbane.condition.disheartened": "You receive a bane on all rolls against CHA and skill rolls based on CHA.",
+    "dragonbane.condition.exhausted": "You receive a bane on all rolls against STR and skill rolls based on STR.",
+    "dragonbane.condition.scared": "You receive a bane on all rolls against WIL and skill rolls based on WIL.",
+    "dragonbane.condition.sickly": "You receive a bane on all rolls against CON and skill rolls based on CON."
   }
 }
