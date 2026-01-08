@@ -1,0 +1,79 @@
+/**
+ * View Player Character Weaknesses
+ * Standalone macro for GMs to view all player character weaknesses
+ */
+
+// Get all player characters
+const playerCharacters = game.actors.filter(
+  actor => actor.type === "character" && actor.hasPlayerOwner
+);
+
+// Sort alphabetically
+playerCharacters.sort((a, b) => a.name.localeCompare(b.name));
+
+// Build HTML content
+let content = "";
+
+if (playerCharacters.length === 0) {
+  content = "<p><em>No player characters found.</em></p>";
+} else {
+  for (let i = 0; i < playerCharacters.length; i++) {
+    const actor = playerCharacters[i];
+    const weakness = actor.system?.weakness || "";
+    const hasWeakness = weakness.trim().length > 0;
+    
+    // Get player names
+    const owners = game.users
+      .filter(user => !user.isGM && actor.testUserPermission(user, CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER))
+      .map(user => user.name);
+    
+    const playerInfo = owners.length > 0 ? ` <small>(${owners.join(", ")})</small>` : "";
+    
+    // Get token image (prototypeToken or actor img as fallback)
+    const tokenImg = actor.prototypeToken?.texture?.src || actor.img;
+    
+    // Build table for this character
+    content += `<table style="width: 100%; border-collapse: collapse; border: none;">`;
+    content += `<tr>`;
+    
+    // Token column
+    content += `<td style="width: 60px; vertical-align: top; border: none; padding: 0;">`;
+    content += `<img src="${tokenImg}" alt="${actor.name}" style="width: 50px; height: 50px; border: none;">`;
+    content += `</td>`;
+    
+    // Info column
+    content += `<td style="vertical-align: top; border: none; padding: 0 0 0 10px;">`;
+    content += `<strong>${actor.name}</strong>${playerInfo}<br>`;
+    
+    if (hasWeakness) {
+      content += `<em>${weakness}</em>`;
+    } else {
+      content += `<span style="color: #999;"><em>No weakness defined</em></span>`;
+    }
+    
+    content += `</td>`;
+    content += `</tr>`;
+    content += `</table>`;
+    
+    // Add separator between characters (but not after the last one)
+    if (i < playerCharacters.length - 1) {
+      content += `<hr style="margin: 10px 0;">`;
+    }
+  }
+}
+
+// Display dialog
+new foundry.applications.api.DialogV2({
+  window: {
+    title: "Player Character Weaknesses"
+  },
+  content: content,
+  buttons: [{
+    action: "close",
+    label: "Close",
+    default: true
+  }],
+  position: {
+    width: 500
+  }
+}).render(true);
