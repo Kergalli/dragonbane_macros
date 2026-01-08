@@ -18,6 +18,8 @@ A collection of macros and utilities for the Dragonbane RPG system in Foundry VT
 
 **summon-elemental** - Summons elementals at the appropriate power level using Foundry Summons 2 and Automated Animations modules.
 
+**view-weaknesses** - Shows weakness for all player-owned characters, useful to the GM during play or the advancement phase.
+
 ## Code Snippets
 
 **actor-edit-for-inner-peace.js** - System file replacement code for fixing the Inner Peace kin ability in the stretch rest function.
