@@ -1,0 +1,50 @@
+// Detects when a skill roll result is ≤ half the skill value (rounded down)
+
+// Prevent duplicate hook registration if macro is run multiple times
+if (game.greatSuccessMonitorHookId) {
+    Hooks.off('createChatMessage', game.greatSuccessMonitorHookId);
+}
+
+game.greatSuccessMonitorHookId = Hooks.on('createChatMessage', async (message) => {
+    // Only process if it looks like a skill roll message
+    const content = message.content;
+    if (!content?.includes('skill-roll')) return;
+
+    // Parse the skill-roll div attributes from the message HTML
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(content, 'text/html');
+    const skillRollDiv = doc.querySelector('.skill-roll');
+    if (!skillRollDiv) return;
+
+    const result = parseInt(skillRollDiv.dataset.result);
+    const target = parseInt(skillRollDiv.dataset.target);
+
+    // Validate we got usable numbers
+    if (isNaN(result) || isNaN(target) || target <= 0) return;
+
+    const halfTarget = Math.floor(target / 2);
+
+    // Check for great success: roll ≤ half skill value
+    if (result <= halfTarget) {
+        // Look up the skill name from the actor
+        const actorUuid = skillRollDiv.dataset.actorId;
+        const skillId = skillRollDiv.dataset.skillId;
+        let skillName = 'Unknown Skill';
+
+        if (actorUuid && skillId) {
+            const actor = await fromUuid(actorUuid);
+            const skill = actor?.items.get(skillId);
+            if (skill) skillName = skill.name;
+        }
+
+        // Delay posting so the original roll message appears first
+        setTimeout(async () => {
+            await ChatMessage.create({
+                speaker: message.speaker,
+                content: `<p><strong>Great Success!</strong><br>${skillName}: ${result} vs ${halfTarget} (half of ${target})</p>`
+            });
+        }, 4500);
+    }
+});
+
+ui.notifications.info('Great Success Monitor active.');
